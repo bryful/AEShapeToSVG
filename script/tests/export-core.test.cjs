@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 // Use the current realm so mocked AE array values retain ES3 instanceof semantics.
-vm.runInThisContext(fs.readFileSync(require('node:path').join(__dirname, '../lib/export-core.js'), 'utf8'));
+vm.runInThisContext(fs.readFileSync(require('node:path').join(__dirname, '../(export-shapes)/export-core.js'), 'utf8'));
 global.PropertyType = {PROPERTY: 1, INDEXED_GROUP: 2};
 global.PropertyValueType = {NO_VALUE: 0, SHAPE: 1};
 global.app = {version: 'mock'};
@@ -35,12 +35,49 @@ assert.equal(doc.complete, true);
 assert.ok(reads.every(([t, pre]) => t === 1.25 && pre === false));
 assert.deepEqual(JSON.parse(AEShapeExport.stringify(doc)), doc);
 assert.throws(() => AEShapeExport.documentFor(comp, layer(nodes), 0, true), /Animation/);
-assert.throws(() => AEShapeExport.documentFor(comp, layer([group('ADBE Vector Filter - Merge', [])]), 0, false), /Unsupported Contents/);
+assert.throws(() => AEShapeExport.documentFor(comp, layer([group('ADBE Vector Filter - Twist', [])]), 0, false), /Unsupported Contents/);
+// Preserve all merge modes, nesting and operator order without flattening geometry.
+for (const mode of [1, 2, 3, 4, 5]) {
+    doc = AEShapeExport.documentFor(comp, layer([group('ADBE Vector Group', [
+        group('ADBE Vectors Group', [
+            group('ADBE Vector Shape - Rect', []),
+            group('ADBE Vector Shape - Ellipse', []),
+            group('ADBE Vector Filter - Merge', [leaf('ADBE Vector Merge Type', mode)]),
+            group('ADBE Vector Graphic - Fill', [])
+        ])
+    ])]), 1.25, false);
+    const contents = doc.contents.children[0].children[0].children;
+    assert.deepEqual(contents.map(n => n.kind), ['rectangle', 'ellipse', 'mergePaths', 'fill']);
+    assert.equal(contents[2].children[0].matchName, 'ADBE Vector Merge Type');
+    assert.equal(contents[2].children[0].value, mode);
+    assert.equal(doc.complete, true);
+    assert.deepEqual(JSON.parse(AEShapeExport.stringify(doc)), doc);
+}
 doc = AEShapeExport.documentFor(comp, layer([group('ADBE Vector Graphic - G-Fill', [leaf('ADBE Vector Grad Colors', null, {
     valueAtTime() { throw Error('Must not read CUSTOM_VALUE'); }
 })])]), 0, false);
-assert.equal(doc.complete, false);
-assert.equal(doc.warnings[0].code, 'GRADIENT_STOPS_UNAVAILABLE');
+assert.equal(doc.complete, true);
+assert.equal(doc.warnings.length, 0);
+assert.equal(doc.contents.children[0].kind, 'fill');
+assert.equal(doc.contents.children[0].matchName, 'ADBE Vector Graphic - Fill');
+assert.deepEqual(doc.contents.children[0].children[0].value, [1, 0, 0, 1]);
+doc = AEShapeExport.documentFor(comp, layer([group('ADBE Vector Graphic - G-Stroke', [
+    leaf('ADBE Vector Grad Start Pt', [0, 0]), leaf('ADBE Vector Grad Colors', null),
+    leaf('ADBE Vector Stroke Width', 8), leaf('ADBE Vector Stroke Opacity', 35),
+    group('ADBE Vector Stroke Dashes', [leaf('ADBE Vector Stroke Dash 1', 4)])
+])]), 2, false);
+const solid = doc.contents.children[0];
+assert.equal(solid.kind, 'stroke');
+assert.equal(solid.matchName, 'ADBE Vector Graphic - Stroke');
+assert.deepEqual(solid.children.map(p => p.value).slice(0, 2), [8, 35]);
+assert.equal(solid.children[2].children[0].value, 4);
+assert.deepEqual(solid.children[3].value, [0, 0, 1, 1]);
+assert.ok(solid.children.every(p => !p.matchName.startsWith('ADBE Vector Grad ')));
+assert.equal(doc.complete, true);
+assert.deepEqual(JSON.parse(AEShapeExport.stringify(doc)), doc);
+assert.throws(() => AEShapeExport.documentFor(comp, layer([group('ADBE Vector Graphic - G-Fill', [
+    leaf('ADBE Vector Grad Colors', null, {numKeys: 1})
+])]), 0, true), /Animation/);
 const shape = {vertices: [[0, 0], [10, 10]], inTangents: [[0, 0], [-1, -1]], outTangents: [[1, 1], [0, 0]], closed: false};
 doc = AEShapeExport.documentFor(comp, layer([group('ADBE Vector Shape - Group', [leaf('ADBE Vector Shape', shape, {propertyValueType: 1})])]), 0, false);
 assert.deepEqual(doc.contents.children[0].children[0].value, shape);

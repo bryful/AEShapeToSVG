@@ -10,6 +10,7 @@ var AEShapeExport = (function () {
         'ADBE Vector Shape - Group': 'path',
         'ADBE Vector Filter - Offset': 'offset',
         'ADBE Vector Filter - Repeater': 'repeater',
+        'ADBE Vector Filter - Merge': 'mergePaths',
         'ADBE Vector Graphic - Fill': 'fill',
         'ADBE Vector Graphic - Stroke': 'stroke',
         'ADBE Vector Graphic - G-Fill': 'gradientFill',
@@ -53,16 +54,36 @@ var AEShapeExport = (function () {
     }
     function read(p, time, strict, warnings, path, contentChild) {
         var n = {name: p.name, matchName: p.matchName, index: p.propertyIndex}, i, child, value;
+        var gradient = p.matchName === 'ADBE Vector Graphic - G-Fill' || p.matchName === 'ADBE Vector Graphic - G-Stroke';
+        var stroke = p.matchName === 'ADBE Vector Graphic - G-Stroke';
         path += '/' + p.name + '[' + p.propertyIndex + ']';
         if (contentChild && !kinds[p.matchName]) { fail(path, 'Unsupported Contents operator: ' + p.matchName); }
         if (kinds[p.matchName]) { n.kind = kinds[p.matchName]; }
         if (p.canSetEnabled) { n.enabled = p.enabled; }
         if (p.propertyType !== PropertyType.PROPERTY) {
             n.children = [];
+            if (gradient) {
+                n.sourceMatchName = p.matchName;
+                n.matchName = stroke ? 'ADBE Vector Graphic - Stroke' : 'ADBE Vector Graphic - Fill';
+                n.kind = stroke ? 'stroke' : 'fill';
+                n.replacement = 'gradientToSolid';
+            }
             for (i = 1; i <= p.numProperties; i++) {
                 child = p.property(i);
+                if (gradient && child.matchName.indexOf('ADBE Vector Grad ') === 0) {
+                    // Strict mode still checks animation on discarded gradient settings.
+                    if (strict && (child.numKeys > 0 || child.expressionEnabled)) {
+                        fail(path + '/' + child.name, 'Animation is forbidden in strict mode');
+                    }
+                    continue;
+                }
                 n.children.push(read(child, time, strict, warnings, path,
                     p.matchName === 'ADBE Root Vectors Group' || p.matchName === 'ADBE Vectors Group'));
+            }
+            if (gradient) {
+                n.children.push({name: 'Color', matchName: stroke ? 'ADBE Vector Stroke Color' : 'ADBE Vector Fill Color',
+                    index: p.numProperties + 1, value: stroke ? [0, 0, 1, 1] : [1, 0, 0, 1],
+                    status: 'replacement', keyframeCount: 0, expressionEnabled: false});
             }
             return n;
         }

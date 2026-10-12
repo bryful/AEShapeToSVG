@@ -8,7 +8,7 @@
 - `complete`: 取得できない値があればfalse。変換側はfalseを検出し、無条件に完成画像を出力しないこと。
 - `warnings`: 欠落理由のcode、path、message。
 
-各ノードは `name`, `matchName`, `index`（AEの1始まりのpropertyIndex）を持ちます。
+各ノードは `name`, `matchName`, `index`（AEの1始まりのpropertyIndex。生成した色ノードは元グループのプロパティ数+1）を持ちます。
 表示名ではなくmatchNameで解釈してください。
 Contents演算子には `kind`、有効状態を設定できるノードには `enabled` も保存します。
 グループは `children` 配列を持ち、AEのプロパティ順序を保持します。
@@ -18,9 +18,17 @@ Contents演算子には `kind`、有効状態を設定できるノードには `
 `value`は評価済みの数値、配列、またはShapeオブジェクトです。
 Shapeは `vertices`, `inTangents`, `outTangents`, `closed` を持ち、接線は頂点からの相対座標です。
 数値の単位・列挙値はAEの元プロパティに従います（座標px、角度degree、不透明度とScaleはpercent、色成分はAE値）。
-`status` は `evaluated`, `noValue`, `unavailable`。
-グラデーションの色ストップは `unavailable` と `value: null`、`reason` を保存します。
+`status` は `evaluated`, `noValue`, `unavailable`, `replacement`。
+グラデーション塗り/線は `kind: fill/stroke` と通常塗り/線のmatchNameに置換します。
+元のmatchNameは `sourceMatchName`、置換理由は `replacement: "gradientToSolid"` に保存します。
+グラデーション固有の子は除外し、通常色ノードを末尾に追加します。
+塗りの色はRGBA `[1,0,0,1]`、線の色は `[0,0,1,1]`、色ノードのstatusは `replacement`。
+共通プロパティと全体の不透明度は保持します。置換は仕様として扱い、completeをfalseにしません。
 
 グループTransformを含む元のローカル座標を保持します。境界計算、変形適用、
 パラメトリック形状生成、オフセット・リピーター展開は変換アプリの責務です。
+パスの結合は `kind: "mergePaths"`、`matchName: "ADBE Vector Filter - Merge"` として保存します。
+子の `ADBE Vector Merge Type` にカレント時間の結合モードを保存します。
+結合、追加、型抜き、交差、交差を除外などのモードはAEの数値をそのまま保持し、
+実際のパス演算は変換アプリ側で実装します。
 SVG/PDFの同時出力やInkscape呼び出しは未実装です。将来はこのJSONを共通入力として使用します。

@@ -1,5 +1,5 @@
 #target aftereffects
-#include "lib/export-core.js"
+#include "(export-shapes)/export-core.js"
 
 (function () {
     try {
@@ -38,7 +38,7 @@
             exists = exists || file.exists;
             jobs.push({file: file, text: AEShapeExport.stringify(doc)});
         }
-        if (warnings && !confirm('Gradient stops could not be exported.\nJSON will be marked complete=false.\nContinue with incomplete JSON?')) { return; }
+        if (warnings && !confirm('Some values could not be exported.\nJSON will be marked complete=false.\nContinue with incomplete JSON?')) { return; }
         if (exists && !confirm('Output files already exist. Overwrite them?')) { return; }
         var written = 0;
         for (i = 0; i < jobs.length; i++) {
