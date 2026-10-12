@@ -22,7 +22,9 @@ Folder.temp={fsName:root};
 Folder.prototype.create=function(){fs.mkdirSync(this.fsName);return true;};
 Folder.prototype.remove=function(){fs.rmdirSync(this.fsName);return true;};
 const context={File,Folder,system:{callSystem(command){
-  return execSync(command,{encoding:'utf8',windowsHide:true,timeout:30000});
+  execSync(command,{encoding:'utf8',windowsHide:true,timeout:30000,stdio:['pipe','pipe','pipe']});
+  // Reproduce AE returning no stdout, despite successful native conversion.
+  return '';
 }}};
 vm.createContext(context);
 vm.runInContext(fs.readFileSync(path.join(__dirname,'../(export-shapes)/export-runner.js'),'utf8'),context);
@@ -40,17 +42,24 @@ try {
     const decoded=Buffer.from(encoded,'base64').toString('utf16le');
     assert(decoded.includes(unusual.replace(/'/g,"''")));
     runner.convert(exe,input,output,log);
+    assert.equal(fs.readFileSync(log.fsName+'.status','ascii'),'0');
     assert(fs.readFileSync(output.fsName,'utf8').includes('<svg'));
     assert(fs.readFileSync(log.fsName,'utf8').includes('SVG saved'));
+    const actualCall=context.system.callSystem;
+    context.system.callSystem=()=> 'AE_SHAPE_EXIT=0\r\n';
+    // A previous successful SVG/status and a stdout marker cannot hide a launch failure.
+    assert.throws(()=>runner.convert(exe,input,output,log),/終了コード: 取得できません/);
+    context.system.callSystem=actualCall;
     output.remove();
     runner.write(input,'{"format":"invalid"}');
     assert.throws(()=>runner.convert(exe,input,output,log),/SVG変換に失敗/);
+    assert.equal(fs.readFileSync(log.fsName+'.status','ascii'),'1');
     assert(input.exists && log.exists && !output.exists);
     const work=runner.workFolder(), temp=new File(path.join(work.fsName,'input.json'));
     runner.write(temp,'temporary');
     assert.equal(runner.cleanup(work,[temp]).length,0);
     assert(!work.exists);
-    console.log('Runner integration passed: real exe, Unicode/metacharacter paths, failure logs, cleanup');
+    console.log('Runner integration passed: empty AE stdout, status files, stale status rejection, Unicode paths, failure logs, cleanup');
 } finally {
     // root is the exact directory returned by mkdtemp, with no user-controlled components.
     assert(path.resolve(root).startsWith(path.resolve(os.tmpdir()) + path.sep));

@@ -85,7 +85,7 @@
                 throw new Error(conversionError.toString() + '\n作業フォルダー: ' + work.fsName +
                     '\n保存済みSVG: ' + written + ' 件\n' + saved.join('\n'));
             }
-            cleanupWarnings = cleanupWarnings.concat(AEShapeRunner.cleanup(work, [input, output, log]));
+            cleanupWarnings = cleanupWarnings.concat(AEShapeRunner.cleanup(work, [input, output, log, new File(log.fsName + '.status')]));
         }
         alert('SVGを保存しました: ' + written + ' 件\n' + saved.join('\n') +
             (cleanupWarnings.length ? '\n削除できなかった中間ファイル:\n' + cleanupWarnings.join('\n') : ''));
