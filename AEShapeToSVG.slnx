@@ -13,8 +13,13 @@
   </Folder>
   <Folder Name="/script/tests/">
     <File Path="script/tests/export-core.test.cjs" />
+    <File Path="script/tests/export-dialog.test.cjs" />
   </Folder>
   <Folder Name="/docs/">
     <File Path="docs/format.md" />
+    <File Path="asts/README.md" />
+  </Folder>
+  <Folder Name="/tests/">
+    <File Path="tests/svg.integration.cjs" />
   </Folder>
 </Solution>

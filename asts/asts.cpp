@@ -1,20 +1,46 @@
-﻿// asts.cpp : このファイルには 'main' 関数が含まれています。プログラム実行の開始と終了がそこで行われます。
-//
-
+#include "SvgExporter.h"
 #include <iostream>
-
-int main()
+#include <stdexcept>
+#include <string>
+int wmain(int argc, wchar_t **argv)
 {
-    std::cout << "Hello World!\n";
+    try
+    {
+        if (argc == 2 && std::wstring(argv[1]) == L"--help")
+        {
+            std::cout << "export-shapes.exe input.json [output.svg] [--margin pixels]\n";
+            return 0;
+        }
+        if (argc < 2)
+        {
+            std::cerr << "Usage: export-shapes.exe input.json [output.svg] [--margin pixels]\n";
+            return 2;
+        }
+        std::filesystem::path input(argv[1]), output = input;
+        output.replace_extension(L".svg");
+        double margin = 2;
+        int i = 2;
+        if (i < argc && std::wstring(argv[i]) != L"--margin")
+            output = argv[i++];
+        if (i < argc)
+        {
+            if (std::wstring(argv[i++]) != L"--margin" || i >= argc)
+                throw std::runtime_error("Invalid arguments");
+            size_t used = 0;
+            std::wstring value(argv[i++]);
+            margin = std::stod(value, &used);
+            if (used != value.size())
+                throw std::runtime_error("Invalid margin");
+        }
+        if (i != argc)
+            throw std::runtime_error("Unexpected argument");
+        asts::ExportSvg(input, output, margin);
+        std::cout << "SVG saved\n";
+        return 0;
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "export-shapes: " << e.what() << '\n';
+        return 1;
+    }
 }
-
-// プログラムの実行: Ctrl + F5 または [デバッグ] > [デバッグなしで開始] メニュー
-// プログラムのデバッグ: F5 または [デバッグ] > [デバッグの開始] メニュー
-
-// 作業を開始するためのヒント: 
-//    1. ソリューション エクスプローラー ウィンドウを使用してファイルを追加/管理します 
-//   2. チーム エクスプローラー ウィンドウを使用してソース管理に接続します
-//   3. 出力ウィンドウを使用して、ビルド出力とその他のメッセージを表示します
-//   4. エラー一覧ウィンドウを使用してエラーを表示します
-//   5. [プロジェクト] > [新しい項目の追加] と移動して新しいコード ファイルを作成するか、[プロジェクト] > [既存の項目の追加] と移動して既存のコード ファイルをプロジェクトに追加します
-//   6. 後ほどこのプロジェクトを再び開く場合、[ファイル] > [開く] > [プロジェクト] と移動して .sln ファイルを選択します

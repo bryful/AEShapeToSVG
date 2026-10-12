@@ -34,7 +34,7 @@ assert.equal(doc.contents.children.length, 10);
 assert.equal(doc.complete, true);
 assert.ok(reads.every(([t, pre]) => t === 1.25 && pre === false));
 assert.deepEqual(JSON.parse(AEShapeExport.stringify(doc)), doc);
-assert.throws(() => AEShapeExport.documentFor(comp, layer(nodes), 0, true), /Animation/);
+assert.throws(() => AEShapeExport.documentFor(comp, layer(nodes), 0, true), /アニメーション/);
 const skippedValue = leaf('never-read', null, {
     numKeys: 3, expressionEnabled: true,
     valueAtTime() { throw Error('Skipped Contents must not be evaluated'); }
@@ -56,6 +56,14 @@ assert.equal(doc.warnings.length, 0);
 assert.deepEqual(JSON.parse(AEShapeExport.stringify(doc)), doc);
 doc = AEShapeExport.documentFor(comp, layer([hidden, unsupported]), 0, true);
 assert.deepEqual(doc.contents.children, []);
+doc = AEShapeExport.documentFor(comp, layer([group('ADBE Vector Graphic - Stroke', [
+    group('ADBE Vector Stroke Dashes', [
+        leaf('ADBE Vector Stroke Dash 1', 10, {canSetExpression: true}),
+        leaf('ADBE Vector Stroke Gap 1', 10, {canSetExpression: false})
+    ])
+])]), 0, false);
+assert.equal(doc.contents.children[0].children[0].visibilityKnown, true);
+assert.equal(doc.contents.children[0].children[0].children.length, 1);
 // Preserve all merge modes, nesting and operator order without flattening geometry.
 for (const mode of [1, 2, 3, 4, 5]) {
     doc = AEShapeExport.documentFor(comp, layer([group('ADBE Vector Group', [
@@ -97,7 +105,7 @@ assert.equal(doc.complete, true);
 assert.deepEqual(JSON.parse(AEShapeExport.stringify(doc)), doc);
 assert.throws(() => AEShapeExport.documentFor(comp, layer([group('ADBE Vector Graphic - G-Fill', [
     leaf('ADBE Vector Grad Colors', null, {numKeys: 1})
-])]), 0, true), /Animation/);
+])]), 0, true), /アニメーション/);
 const shape = {vertices: [[0, 0], [10, 10]], inTangents: [[0, 0], [-1, -1]], outTangents: [[1, 1], [0, 0]], closed: false};
 for (const mode of [1, 2]) {
     const trim = group('ADBE Vector Filter - Trim', [
@@ -118,15 +126,15 @@ for (const mode of [1, 2]) {
     assert.deepEqual(children[1].children.map(n => n.value), [15, 80, -90, mode]);
     assert.equal(doc.complete, true);
     assert.deepEqual(JSON.parse(AEShapeExport.stringify(doc)), doc);
-    assert.throws(() => AEShapeExport.documentFor(comp, nested, 1.25, true), /Animation/);
+    assert.throws(() => AEShapeExport.documentFor(comp, nested, 1.25, true), /アニメーション/);
 }
 doc = AEShapeExport.documentFor(comp, layer([group('ADBE Vector Shape - Group', [leaf('ADBE Vector Shape', shape, {propertyValueType: 1})])]), 0, false);
 assert.deepEqual(doc.contents.children[0].children[0].value, shape);
 assert.throws(() => AEShapeExport.documentFor(comp, layer([group('ADBE Vector Graphic - Fill', [leaf('color', 1, {
     expressionEnabled: true, expressionError: 'bad expression'
-})])]), 0, false), /Expression error/);
+})])]), 0, false), /エクスプレッションエラー/);
 assert.equal(AEShapeExport.safeName('CON'), '_CON');
 assert.equal(AEShapeExport.safeName('a/b: .'), 'a_b_');
 assert.equal(JSON.parse(AEShapeExport.stringify({text: '日本語\n"\\\u0000'})).text, '日本語\n"\\\u0000');
-assert.throws(() => AEShapeExport.stringify(NaN), /Non-finite/);
+assert.throws(() => AEShapeExport.stringify(NaN), /保存できない数値/);
 console.log('Export core mock tests passed');

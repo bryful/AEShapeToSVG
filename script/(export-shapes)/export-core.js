@@ -30,14 +30,14 @@ var AEShapeExport = (function () {
         if (typeof v === 'string') { return quote(v); }
         if (typeof v === 'boolean') { return v ? 'true' : 'false'; }
         if (typeof v === 'number') {
-            if (!isFinite(v)) { throw new Error('Non-finite JSON number'); }
+            if (!isFinite(v)) { throw new Error('JSONに保存できない数値です'); }
             return String(v);
         }
         if (v instanceof Array) {
             for (i = 0; i < v.length; i++) { a.push(stringify(v[i])); }
             return '[' + a.join(',') + ']';
         }
-        if (typeof v !== 'object') { throw new Error('Unsupported JSON value'); }
+        if (typeof v !== 'object') { throw new Error('JSONに保存できない値です'); }
         for (k in v) {
             if (Object.prototype.hasOwnProperty.call(v, k)) { a.push(quote(k) + ':' + stringify(v[k])); }
         }
@@ -51,7 +51,7 @@ var AEShapeExport = (function () {
         }
         if (typeof v === 'number' && isFinite(v)) { return v; }
         if (typeof v === 'boolean' || typeof v === 'string') { return v; }
-        fail(path, 'Unsupported or non-finite property value');
+        fail(path, '未対応、または有限数でないプロパティ値です');
     }
     function read(p, time, strict, warnings, path, contentChild) {
         var n = {name: p.name, matchName: p.matchName, index: p.propertyIndex}, i, child, value, childNode;
@@ -64,6 +64,7 @@ var AEShapeExport = (function () {
         if (p.canSetEnabled) { n.enabled = p.enabled; }
         if (p.propertyType !== PropertyType.PROPERTY) {
             n.children = [];
+            if (p.matchName === 'ADBE Vector Stroke Dashes') { n.visibilityKnown = true; }
             if (gradient) {
                 n.sourceMatchName = p.matchName;
                 n.matchName = stroke ? 'ADBE Vector Graphic - Stroke' : 'ADBE Vector Graphic - Fill';
@@ -72,10 +73,12 @@ var AEShapeExport = (function () {
             }
             for (i = 1; i <= p.numProperties; i++) {
                 child = p.property(i);
+                // AE enumerates unused dash/gap slots too. Hidden slots cannot accept expressions.
+                if (p.matchName === 'ADBE Vector Stroke Dashes' && child.canSetExpression === false) { continue; }
                 if (gradient && child.matchName.indexOf('ADBE Vector Grad ') === 0) {
                     // Strict mode still checks animation on discarded gradient settings.
                     if (strict && (child.numKeys > 0 || child.expressionEnabled)) {
-                        fail(path + '/' + child.name, 'Animation is forbidden in strict mode');
+                        fail(path + '/' + child.name, 'アニメーション禁止モードでアニメーションを検出しました');
                     }
                     continue;
                 }
@@ -92,12 +95,12 @@ var AEShapeExport = (function () {
         }
         n.keyframeCount = p.numKeys;
         n.expressionEnabled = !!p.expressionEnabled;
-        if (strict && (n.keyframeCount > 0 || n.expressionEnabled)) { fail(path, 'Animation is forbidden in strict mode'); }
+        if (strict && (n.keyframeCount > 0 || n.expressionEnabled)) { fail(path, 'アニメーション禁止モードでアニメーションを検出しました'); }
         // Gradient Colors is a CUSTOM_VALUE on AE versions that cannot expose stops.
         if (p.matchName === 'ADBE Vector Grad Colors') {
             n.value = null;
             n.status = 'unavailable';
-            n.reason = 'Gradient color/opacity stops are not exposed as a portable scripting value';
+            n.reason = 'グラデーションの色・不透明度ストップを取得できません';
             warnings.push({code: 'GRADIENT_STOPS_UNAVAILABLE', path: path, message: n.reason});
             return n;
         }
@@ -107,8 +110,8 @@ var AEShapeExport = (function () {
             return n;
         }
         try { value = p.valueAtTime(time, false); }
-        catch (e) { fail(path, 'Cannot evaluate property: ' + e.toString()); }
-        if (n.expressionEnabled && p.expressionError) { fail(path, 'Expression error: ' + p.expressionError); }
+        catch (e) { fail(path, 'プロパティを評価できません: ' + e.toString()); }
+        if (n.expressionEnabled && p.expressionError) { fail(path, 'エクスプレッションエラー: ' + p.expressionError); }
         if (p.propertyValueType === PropertyValueType.SHAPE) {
             n.value = {vertices: copyValue(value.vertices, path),
                 inTangents: copyValue(value.inTangents, path),
@@ -119,7 +122,7 @@ var AEShapeExport = (function () {
     }
     function documentFor(comp, layer, time, strict) {
         var warnings = [], contents = layer.property('ADBE Root Vectors Group');
-        if (!contents) { throw new Error('Not a Shape layer: ' + layer.name); }
+        if (!contents) { throw new Error('シェイプレイヤーではありません: ' + layer.name); }
         var tree = read(contents, time, strict, warnings, layer.name, false);
         return {format: 'ae-shape-contents', schemaVersion: 1,
             scope: 'contentsOnly', complete: warnings.length === 0,
