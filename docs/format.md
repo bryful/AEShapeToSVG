@@ -12,6 +12,9 @@
 表示名ではなくmatchNameで解釈してください。
 Contents演算子には `kind`、有効状態を設定できるノードには `enabled` も保存します。
 グループは `children` 配列を持ち、AEのプロパティ順序を保持します。
+非表示のContentsオブジェクトと未対応のContents演算子は、子孫も含めて配列から除外します。
+残るノードのindexは元のpropertyIndexを維持するため欠番になります。
+除外だけを理由にcompleteをfalseにはしません。全対象が除外された場合、childrenは空配列です。
 配列順はSVGの描画順へ直接置換せず、AEの合成順序・演算子の作用範囲と合わせて解釈します。
 
 値ノードは `value`, `status`, `keyframeCount`, `expressionEnabled` を持ちます。

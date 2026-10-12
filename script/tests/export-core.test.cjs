@@ -35,7 +35,27 @@ assert.equal(doc.complete, true);
 assert.ok(reads.every(([t, pre]) => t === 1.25 && pre === false));
 assert.deepEqual(JSON.parse(AEShapeExport.stringify(doc)), doc);
 assert.throws(() => AEShapeExport.documentFor(comp, layer(nodes), 0, true), /Animation/);
-assert.throws(() => AEShapeExport.documentFor(comp, layer([group('ADBE Vector Filter - Twist', [])]), 0, false), /Unsupported Contents/);
+const skippedValue = leaf('never-read', null, {
+    numKeys: 3, expressionEnabled: true,
+    valueAtTime() { throw Error('Skipped Contents must not be evaluated'); }
+});
+const hidden = Object.assign(group('ADBE Vector Group', [skippedValue]), {canSetEnabled: true, enabled: false});
+const hiddenGradient = Object.assign(group('ADBE Vector Graphic - G-Fill', [skippedValue]), {canSetEnabled: true, enabled: false});
+const unsupported = group('ADBE Vector Filter - Twist', [skippedValue]);
+doc = AEShapeExport.documentFor(comp, layer([group('ADBE Vector Group', [group('ADBE Vectors Group', [
+    hidden, unsupported, group('ADBE Vector Shape - Rect', []), hiddenGradient,
+    group('ADBE Vector Graphic - G-Fill', []), group('ADBE Vector Graphic - G-Stroke', [])
+])])]), 0, true);
+const kept = doc.contents.children[0].children[0].children;
+assert.deepEqual(kept.map(n => n.kind), ['rectangle', 'fill', 'stroke']);
+assert.deepEqual(kept.map(n => n.index), [3, 5, 6]);
+assert.deepEqual(kept[1].children[0].value, [1, 0, 0, 1]);
+assert.deepEqual(kept[2].children[0].value, [0, 0, 1, 1]);
+assert.equal(doc.complete, true);
+assert.equal(doc.warnings.length, 0);
+assert.deepEqual(JSON.parse(AEShapeExport.stringify(doc)), doc);
+doc = AEShapeExport.documentFor(comp, layer([hidden, unsupported]), 0, true);
+assert.deepEqual(doc.contents.children, []);
 // Preserve all merge modes, nesting and operator order without flattening geometry.
 for (const mode of [1, 2, 3, 4, 5]) {
     doc = AEShapeExport.documentFor(comp, layer([group('ADBE Vector Group', [

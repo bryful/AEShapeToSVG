@@ -54,11 +54,12 @@ var AEShapeExport = (function () {
         fail(path, 'Unsupported or non-finite property value');
     }
     function read(p, time, strict, warnings, path, contentChild) {
-        var n = {name: p.name, matchName: p.matchName, index: p.propertyIndex}, i, child, value;
+        var n = {name: p.name, matchName: p.matchName, index: p.propertyIndex}, i, child, value, childNode;
         var gradient = p.matchName === 'ADBE Vector Graphic - G-Fill' || p.matchName === 'ADBE Vector Graphic - G-Stroke';
         var stroke = p.matchName === 'ADBE Vector Graphic - G-Stroke';
         path += '/' + p.name + '[' + p.propertyIndex + ']';
-        if (contentChild && !kinds[p.matchName]) { fail(path, 'Unsupported Contents operator: ' + p.matchName); }
+        // Skip the entire operator/group before evaluating any descendants.
+        if (contentChild && (!kinds[p.matchName] || (p.canSetEnabled && !p.enabled))) { return null; }
         if (kinds[p.matchName]) { n.kind = kinds[p.matchName]; }
         if (p.canSetEnabled) { n.enabled = p.enabled; }
         if (p.propertyType !== PropertyType.PROPERTY) {
@@ -78,8 +79,9 @@ var AEShapeExport = (function () {
                     }
                     continue;
                 }
-                n.children.push(read(child, time, strict, warnings, path,
-                    p.matchName === 'ADBE Root Vectors Group' || p.matchName === 'ADBE Vectors Group'));
+                childNode = read(child, time, strict, warnings, path,
+                    p.matchName === 'ADBE Root Vectors Group' || p.matchName === 'ADBE Vectors Group');
+                if (childNode !== null) { n.children.push(childNode); }
             }
             if (gradient) {
                 n.children.push({name: 'Color', matchName: stroke ? 'ADBE Vector Stroke Color' : 'ADBE Vector Fill Color',
