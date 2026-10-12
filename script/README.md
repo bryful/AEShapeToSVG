@@ -1,8 +1,18 @@
-# Shape Contents JSON exporter
+# Shape Contents SVG exporter
 
 AEの「ファイル → スクリプト → スクリプトファイルを実行」で `export-shapes.jsx` を実行します。
-`(export-shapes)/export-core.js` も相対位置を維持して配置してください。Shapeレイヤーを選択し、保存先を指定します。
+Windowsで利用します。以下のファイルを相対位置を維持して配置してください。
+
+```text
+export-shapes.jsx
+export-shapes.exe
+(export-shapes)/export-core.js
+(export-shapes)/export-runner.js
+```
+
+Shapeレイヤーを選択し、保存先を指定します。
 AEの環境設定でスクリプトによるファイル書き込みを許可してください。
+Windows標準のWindows PowerShellを使ってexeを起動します。
 
 標準はカレント時間の静止画です。Expression適用後の値を取得します。
 「Contentsにアニメーションがある場合はエラーにする」を有効にするとContents内のキーフレーム・有効なExpressionをエラーにします。
@@ -31,32 +41,38 @@ SVG変換側でも角丸演算に対応します。開いたパスの端点と�
 AEの元レイヤーは変更しません。アニメーション禁止モードでは省略する設定も検査します。
 
 日本語ダイアログの「名前を付けて保存」で、レイヤーごとに保存先とファイル名を指定します。
-初期名は `<コンポジション名>_<レイヤー名>.json` です。禁止文字を置換し、同名は連番を付けます。
+初期名は `<コンポジション名>_<レイヤー名>.svg` です。禁止文字を置換し、同名は連番を付けます。
 初期フォルダーはAEプロジェクトの保存場所（未保存ならドキュメント）です。
 複数レイヤーでも、各保存ダイアログはaepのあるフォルダーから開始します。
-拡張子 `.json` がなければ付加します。複数レイヤーで同じ保存先は指定できません。
+拡張子 `.svg` がなければ付加します。複数レイヤーで同じ保存先は指定できません。
 全レイヤーの取得・JSON化と保存先選択が終わってから保存し、既存ファイルの上書きは確認します。
 保存先選択をキャンセルした場合、どのレイヤーも保存しません。
 I/Oエラーで途中停止した場合、既に保存されたファイルは残ります。
+
+標準ではSVGだけを保存します。「中間JSONをSVGと一緒に残す」を有効にすると、
+SVGと同じ場所・同じベース名の `.json` も保存します。既存JSONは有効時のみ上書き対象です。
+JSON、変換途中のSVG、変換ログはOSの一時フォルダー内の専用フォルダーで作成します。
+exeの終了コードが0で、SVGが作成されていることを確認してから指定先へコピーします。
+変換失敗時は既存の出力SVGを変更せず、調査用のJSONとログを残して場所を表示します。
+保存成功後にこの処理で作成した中間ファイルを削除します。削除できなかった場合は場所を表示します。
+不完全なJSONはSVGへ変換できないため、ファイル保存前にエラーにします。
+変換中はAEからの同期呼び出しとなるため、処理終了まで待ってください。
 
 AE未インストール環境での確認:
 
 ```powershell
 node script/tests/export-core.test.cjs
 node script/tests/export-dialog.test.cjs
+node script/tests/export-runner.integration.cjs
 ```
 
-モックによる取得・シリアライズ確認です。ScriptUI、File、AE固有のプロパティ構造、
+取得・ダイアログはモック確認です。runnerは実際のexeを使い、日本語・空白・記号を含むパス、
+変換失敗時のログと中間ファイル削除を確認します。ScriptUI、File、AE固有のプロパティ構造、
 実際のExpression評価はAE環境で検証してください。
 
 参考: https://ae-scripting.docsforadobe.dev/matchnames/layer/shapelayer/
 
-## 今後の出力フロー（今回は未実装）
+## 今後の出力（未実装）
 
-`export-shapes.exe` は `export-shapes.jsx` と同じフォルダーに配置します。
-現在はJSON書き出しのみで、exeを起動したりJSONを削除したりしません。
-SVG連携時は保存ダイアログの対象をSVGにし、一時JSONを同じ場所のexeへ渡して変換します。
-「中間JSONを残す」を選択できるようにし、標準ではSVGのみを残す予定です。
-JSONの削除はSVG変換成功後に行い、失敗時には調査用に残します。
 AI出力は将来の追加機能として、Illustratorを呼び出してSVGからAIを作成する予定です。
 PDF / Inkscape連携も別途実装します。

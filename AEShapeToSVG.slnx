@@ -10,10 +10,12 @@
   </Folder>
   <Folder Name="/script/(export-shapes)/">
     <File Path="script/(export-shapes)/export-core.js" />
+    <File Path="script/(export-shapes)/export-runner.js" />
   </Folder>
   <Folder Name="/script/tests/">
     <File Path="script/tests/export-core.test.cjs" />
     <File Path="script/tests/export-dialog.test.cjs" />
+    <File Path="script/tests/export-runner.integration.cjs" />
   </Folder>
   <Folder Name="/docs/">
     <File Path="docs/format.md" />

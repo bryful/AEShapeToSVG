@@ -68,4 +68,5 @@ node tests/svg.integration.cjs script/export-shapes.exe <sharpのモジュール
 
 ビルド結果の名前は `export-shapes.exe` です。ビルド後に `script` フォルダーへ自動コピーします。
 配布時も `export-shapes.jsx` と同じ場所に置いてください。最後にビルドした構成のexeが配置されます。
-現在、スクリプトからexeの自動起動は行いません。
+スクリプトからexeを自動起動してSVGを保存します。通常の出力では中間JSONを削除し、
+「中間JSONをSVGと一緒に残す」で保持できます。変換失敗時は調査用のJSONとログを残します。
