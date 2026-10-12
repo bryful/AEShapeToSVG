@@ -45,3 +45,11 @@ Bezier曲線の長さ計算、パスの分割、複数シェイプへの適用�
 破線グループ `ADBE Vector Stroke Dashes` の `visibilityKnown: true` は、未使用のスロットを
 書き出し時に除外済みであることを表します。既存JSONで省略されている場合は有効な破線の数を
 確定できないため、astsは警告し実線として出力します。
+
+「角を丸くする」は `kind: "roundCorners"`、`matchName: "ADBE Vector Filter - RC"` として保存します。
+子の `ADBE Vector RoundCorner Radius` に半径（px）の評価値を保持します。
+カレント時間・Expression適用後の値とContents内の順序を保持し、非表示の場合は除外します。
+アニメーション禁止モードでは半径のキーフレーム・有効なExpressionもエラーになります。
+既存の長方形の角丸半径（`ADBE Vector Rect Roundness`）とは別の演算子です。
+今回の実装範囲はJSON出力です。SVG変換での角丸演算は未実装です。
+matchNameの参照: https://ae-scripting.docsforadobe.dev/matchnames/layer/shapelayer/#round-corners

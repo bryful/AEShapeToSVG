@@ -44,6 +44,27 @@ async function main() {
   let svg=run(document([rect(),fill()]),['--margin','0']);
   assert.ok(svg.includes('viewBox="-50 -50 100 100"'));
   let pixel=await raster(svg);red(pixel(0,0));clear(pixel(60,0));
+  // Native roundedness stays Bezier, accepts negative values, and reverses winding
+  // without changing the filled silhouette. Cover outer and inner knobs independently.
+  for (const [type, outer, inner] of [[2,76,0],[1,0,39],[1,45,0],[1,-35,39],[1,100,100]]) {
+    const shape = node('polystar','ADBE Vector Shape - Star',[
+      prop('ADBE Vector Star Type',type), prop('ADBE Vector Star Points',type===2?3:5),
+      prop('ADBE Vector Star Outer Radius',80),prop('ADBE Vector Star Inner Radius',40),
+      prop('ADBE Vector Star Outer Roundess',outer),prop('ADBE Vector Star Inner Roundess',inner)
+    ]);
+    const normal = run(document([shape,fill()]));
+    assert.match(normal,/C/);
+    pixel=await raster(normal);red(pixel(0,0));clear(pixel(95,95));
+    shape.children.push(prop('ADBE Vector Shape Direction',3));
+    const reversed=run(document([shape,fill()]));
+    assert.match(reversed,/C/);
+    const reversePixel=await raster(reversed);
+    for(let y=-85;y<=85;y+=5) for(let x=-85;x<=85;x+=5)
+      assert.ok(Math.abs(pixel(x,y)[3]-reversePixel(x,y)[3])<=2,`Winding changed silhouette at ${x},${y}`);
+    shape.children=shape.children.filter(p=>!p.matchName.endsWith('Roundess'));
+    const sharpSvg=run(document([shape,fill()]));
+    assert.notEqual(normal.match(/ d="([^"]*)"/)[1],sharpSvg.match(/ d="([^"]*)"/)[1]);
+  }
   // Closed-path offset must produce square miters and shrink the interior for negatives.
   for(const amount of [10,-10]) {
     svg=run(document([rect(),node('offset','ADBE Vector Filter - Offset',[

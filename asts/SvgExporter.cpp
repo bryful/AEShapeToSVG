@@ -356,22 +356,45 @@ class Exporter
             double points = Get(n, "ADBE Vector Star Points", 5);
             if (points < 2 || points > 10000 || points != std::floor(points))
                 throw std::runtime_error("Fractional/excessive polystar points unsupported");
-            if (Get(n, "ADBE Vector Star Outer Roundess", 0) != 0 ||
-                (star && Get(n, "ADBE Vector Star Inner Roundess", 0) != 0))
-                throw std::runtime_error("Rounded polystars unsupported");
             auto p = GetP(n, "ADBE Vector Star Position");
             double a = Get(n, "ADBE Vector Star Rotation", 0) * pi / 180 - pi / 2,
                    outer = Get(n, "ADBE Vector Star Outer Radius", 100),
                    inner = Get(n, "ADBE Vector Star Inner Radius", 50);
-            Figure f;
-            f.closed = true;
             int count = int(points) * (star ? 2 : 1);
+            double outerRound = Get(n, "ADBE Vector Star Outer Roundess", 0) / 100,
+                   innerRound = star ? Get(n, "ADBE Vector Star Inner Roundess", 0) / 100 : 0;
+            bool reverse = Get(n, "ADBE Vector Shape Direction", 1) == 3;
+            double direction = reverse ? -1 : 1;
+            std::vector<P> vertices, handles;
             for (int i = 0; i < count; ++i)
             {
-                double angle = a + 2 * pi * i / count, r = star && i % 2 ? inner : outer;
-                f.points.push_back({p.x + float(r * std::cos(angle)), p.y + float(r * std::sin(angle))});
+                bool inset = star && i % 2;
+                double angle = a + direction * 2 * pi * i / count, r = inset ? inner : outer;
+                // AE-style radial tangents, scaled by roundedness and point count.
+                // Reference: lottie-web ShapeProperty.js (convertStar/PolygonToPath).
+                // Preserve signed roundedness: negative values deliberately invert the handles.
+                // Polygon factor calibrated against the supplied AE 25.6 three-point sample.
+                double length = r * (star ? pi / count : .47829) * (inset ? innerRound : outerRound);
+                vertices.push_back({p.x + float(r * std::cos(angle)), p.y + float(r * std::sin(angle))});
+                handles.push_back(
+                    {float(-std::sin(angle) * length * direction), float(std::cos(angle) * length * direction)});
             }
-            g = Lines({f});
+            g = Path([&](ID2D1GeometrySink *s) {
+                s->BeginFigure(vertices[0], D2D1_FIGURE_BEGIN_FILLED);
+                for (int i = 0; i < count; ++i)
+                {
+                    int j = (i + 1) % count;
+                    if (outerRound == 0 && innerRound == 0)
+                        s->AddLine(vertices[j]);
+                    else
+                        s->AddBezier({Add(vertices[i], handles[i]),
+                                      {vertices[j].x - handles[j].x, vertices[j].y - handles[j].y},
+                                      vertices[j]});
+                }
+                s->EndFigure(D2D1_FIGURE_END_CLOSED);
+            });
+            // Direction was handled during curve construction; keep the Bezier curves intact.
+            return g;
         }
         if (Get(n, "ADBE Vector Shape Direction", 1) == 3)
         {

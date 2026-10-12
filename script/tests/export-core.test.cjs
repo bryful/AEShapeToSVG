@@ -137,4 +137,30 @@ assert.equal(AEShapeExport.safeName('CON'), '_CON');
 assert.equal(AEShapeExport.safeName('a/b: .'), 'a_b_');
 assert.equal(JSON.parse(AEShapeExport.stringify({text: '日本語\n"\\\u0000'})).text, '日本語\n"\\\u0000');
 assert.throws(() => AEShapeExport.stringify(NaN), /保存できない数値/);
+// Round Corners preserves operator order, evaluated radius and animation policy.
+const round = group('ADBE Vector Filter - RC', [leaf('ADBE Vector RoundCorner Radius', 25, {
+    numKeys: 2, expressionEnabled: true,
+    valueAtTime(t, pre) { assert.equal(t, 1.25); assert.equal(pre, false); return 25; }
+})]);
+const roundedLayer = layer([group('ADBE Vector Group', [group('ADBE Vectors Group', [
+    group('ADBE Vector Shape - Rect', []), round, group('ADBE Vector Graphic - Fill', [])
+])])]);
+doc = AEShapeExport.documentFor(comp, roundedLayer, 1.25, false);
+const roundedChildren = doc.contents.children[0].children[0].children;
+assert.deepEqual(roundedChildren.map(n => n.kind), ['rectangle', 'roundCorners', 'fill']);
+assert.equal(roundedChildren[1].children[0].matchName, 'ADBE Vector RoundCorner Radius');
+assert.equal(roundedChildren[1].children[0].value, 25);
+assert.equal(doc.complete, true);
+assert.deepEqual(JSON.parse(AEShapeExport.stringify(doc)), doc);
+assert.throws(() => AEShapeExport.documentFor(comp, roundedLayer, 1.25, true), /アニメーション/);
+round.canSetEnabled = true;
+round.enabled = false;
+doc = AEShapeExport.documentFor(comp, roundedLayer, 0, true);
+assert.deepEqual(doc.contents.children[0].children[0].children.map(n => n.kind), ['rectangle', 'fill']);
+for (const radius of [0, 12.5, 1000]) {
+    doc = AEShapeExport.documentFor(comp, layer([group('ADBE Vector Filter - RC', [
+        leaf('ADBE Vector RoundCorner Radius', radius)
+    ])]), 0, false);
+    assert.equal(doc.contents.children[0].children[0].value, radius);
+}
 console.log('Export core mock tests passed');
