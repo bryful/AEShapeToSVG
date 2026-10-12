@@ -101,12 +101,22 @@ struct Figure
     std::vector<P> points;
     bool closed = false;
 };
+struct CurveVertex
+{
+    P point, in, out;
+};
+struct CurveFigure
+{
+    std::vector<CurveVertex> vertices;
+    bool closed = false;
+};
 // Stack-owned sink, borrowed only during synchronous Direct2D calls.
 class Sink : public ID2D1SimplifiedGeometrySink
 {
   public:
     std::ostringstream text;
     std::vector<Figure> figures;
+    std::vector<CurveFigure> curves;
     HRESULT error = S_OK;
     Sink()
     {
@@ -155,6 +165,7 @@ class Sink : public ID2D1SimplifiedGeometrySink
         Safe([&] {
             text << 'M' << p.x << ' ' << p.y;
             figures.push_back({{p}, false});
+            curves.push_back({{{p, p, p}}, false});
         });
     }
     void STDMETHODCALLTYPE AddLines(const P *p, UINT32 count) override
@@ -164,6 +175,7 @@ class Sink : public ID2D1SimplifiedGeometrySink
             {
                 text << 'L' << p[i].x << ' ' << p[i].y;
                 figures.back().points.push_back(p[i]);
+                curves.back().vertices.push_back({p[i], p[i], p[i]});
             }
         });
     }
@@ -171,8 +183,12 @@ class Sink : public ID2D1SimplifiedGeometrySink
     {
         Safe([&] {
             for (UINT32 i = 0; i < count; ++i)
+            {
                 text << 'C' << p[i].point1.x << ' ' << p[i].point1.y << ' ' << p[i].point2.x << ' ' << p[i].point2.y
                      << ' ' << p[i].point3.x << ' ' << p[i].point3.y;
+                curves.back().vertices.back().out = p[i].point1;
+                curves.back().vertices.push_back({p[i].point3, p[i].point2, p[i].point3});
+            }
         });
     }
     void STDMETHODCALLTYPE EndFigure(D2D1_FIGURE_END end) override
@@ -182,6 +198,7 @@ class Sink : public ID2D1SimplifiedGeometrySink
             {
                 text << 'Z';
                 figures.back().closed = true;
+                curves.back().closed = true;
             }
         });
     }
@@ -511,6 +528,72 @@ class Exporter
         }
         return result;
     }
+    std::vector<Shape> RoundCorners(const std::vector<Shape> &paths, const J &n)
+    {
+        double radius = Get(n, "ADBE Vector RoundCorner Radius", 0);
+        if (radius <= 0)
+            return paths;
+        std::vector<Shape> result;
+        for (auto shape : paths)
+        {
+            Sink sink;
+            Check(shape.geometry->Simplify(D2D1_GEOMETRY_SIMPLIFICATION_OPTION_CUBICS_AND_LINES, nullptr, tol, &sink));
+            Check(sink.Close());
+            shape.geometry = Path([&](ID2D1GeometrySink *s) {
+                for (auto figure : sink.curves)
+                {
+                    auto &v = figure.vertices;
+                    // Direct2D may express the closing edge explicitly.
+                    if (figure.closed && v.size() > 1 && Distance(v.front().point, v.back().point) < 1e-5)
+                    {
+                        v.front().in = v.back().in;
+                        v.pop_back();
+                    }
+                    if (v.empty())
+                        continue;
+                    std::vector<CurveVertex> rounded;
+                    for (size_t i = 0; i < v.size(); ++i)
+                    {
+                        auto current = v[i];
+                        bool endpoint = !figure.closed && (i == 0 || i + 1 == v.size());
+                        bool corner =
+                            Distance(current.point, current.in) < 1e-5 && Distance(current.point, current.out) < 1e-5;
+                        if (endpoint || !corner || v.size() < 3)
+                        {
+                            rounded.push_back(current);
+                            continue;
+                        }
+                        P previous = v[(i + v.size() - 1) % v.size()].point;
+                        P next = v[(i + 1) % v.size()].point;
+                        double before = Distance(current.point, previous), after = Distance(current.point, next);
+                        if (before < 1e-5 || after < 1e-5)
+                        {
+                            rounded.push_back(current);
+                            continue;
+                        }
+                        P entry = Lerp(current.point, previous, std::min(radius / before, .5));
+                        P exit = Lerp(current.point, next, std::min(radius / after, .5));
+                        constexpr double handle = .551915024494;
+                        rounded.push_back({entry, entry, Lerp(entry, current.point, handle)});
+                        rounded.push_back({exit, Lerp(exit, current.point, handle), exit});
+                    }
+                    s->BeginFigure(rounded[0].point, D2D1_FIGURE_BEGIN_FILLED);
+                    size_t edges = figure.closed ? rounded.size() : rounded.size() - 1;
+                    for (size_t i = 0; i < edges; ++i)
+                    {
+                        const auto &from = rounded[i], &to = rounded[(i + 1) % rounded.size()];
+                        if (Distance(from.point, from.out) < 1e-5 && Distance(to.point, to.in) < 1e-5)
+                            s->AddLine(to.point);
+                        else
+                            s->AddBezier({from.out, to.in, to.point});
+                    }
+                    s->EndFigure(figure.closed ? D2D1_FIGURE_END_CLOSED : D2D1_FIGURE_END_OPEN);
+                }
+            });
+            result.push_back(shape);
+        }
+        return result;
+    }
     std::vector<Shape> Offset(const std::vector<Shape> &paths, const J &n)
     {
         double amount = Get(n, "ADBE Vector Offset Amount", 0);
@@ -630,14 +713,18 @@ class Exporter
                 }
                 r.paths = {{g, 1}};
             }
-            else if (kind == "trimPaths" || kind == "offset")
+            else if (kind == "trimPaths" || kind == "offset" || kind == "roundCorners")
             {
-                r.paths = kind == "trimPaths" ? Trim(r.paths, n) : Offset(r.paths, n);
+                auto apply = [&](const std::vector<Shape> &paths) {
+                    return kind == "trimPaths"      ? Trim(paths, n)
+                           : kind == "roundCorners" ? RoundCorners(paths, n)
+                                                    : Offset(paths, n);
+                };
+                r.paths = apply(r.paths);
                 for (auto &d : r.draws)
                 {
                     auto g = Transform(d.shape.geometry, d.matrix);
-                    auto changed =
-                        kind == "trimPaths" ? Trim({{g, d.shape.opacity}}, n) : Offset({{g, d.shape.opacity}}, n);
+                    auto changed = apply({{g, d.shape.opacity}});
                     d.shape = {Join(changed), d.shape.opacity};
                     d.matrix = M::Identity();
                 }

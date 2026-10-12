@@ -66,6 +66,33 @@ async function main() {
     assert.notEqual(normal.match(/ d="([^"]*)"/)[1],sharpSvg.match(/ d="([^"]*)"/)[1]);
   }
   // Closed-path offset must produce square miters and shrink the interior for negatives.
+  const roundCorners = radius => node('roundCorners','ADBE Vector Filter - RC',[
+    prop('ADBE Vector RoundCorner Radius',radius)
+  ]);
+  svg=run(document([rect(),roundCorners(25),fill()]));
+  pixel=await raster(svg);red(pixel(0,0));red(pixel(45,0));clear(pixel(48,48));
+  assert.match(svg,/C/);
+  // Operators after a paint also affect its previously collected geometry.
+  svg=run(document([rect(),fill(),roundCorners(25)]));
+  pixel=await raster(svg);clear(pixel(48,48));red(pixel(0,0));
+  svg=run(document([rect(),roundCorners(0),fill()]));
+  pixel=await raster(svg);red(pixel(48,48));
+  svg=run(document([rect(),roundCorners(1000),fill()]));
+  pixel=await raster(svg);red(pixel(0,0));clear(pixel(48,48));
+  // A corner in an open path rounds, while the two endpoints remain in place.
+  const cornerPath=node('path','ADBE Vector Shape - Group',[prop('ADBE Vector Shape',{
+    vertices:[[-50,50],[-50,-50],[50,-50]],inTangents:[[0,0],[0,0],[0,0]],
+    outTangents:[[0,0],[0,0],[0,0]],closed:false
+  })]);
+  svg=run(document([cornerPath,roundCorners(30),stroke()]));pixel=await raster(svg);
+  clear(pixel(-50,-50));assert.ok(pixel(-50,45)[2]>240);assert.ok(pixel(45,-50)[2]>240);
+  // Smooth native curves must not be flattened or rounded again.
+  const ellipseSvg=run(document([ellipse(),fill()]));
+  const roundEllipseSvg=run(document([ellipse(),roundCorners(30),fill()]));
+  const ellipsePixel=await raster(ellipseSvg), roundEllipsePixel=await raster(roundEllipseSvg);
+  for(let y=-55;y<=55;y+=5)for(let x=-55;x<=55;x+=5)
+    assert.ok(Math.abs(ellipsePixel(x,y)[3]-roundEllipsePixel(x,y)[3])<=1);
+  assert.match(roundEllipseSvg,/C/);
   for(const amount of [10,-10]) {
     svg=run(document([rect(),node('offset','ADBE Vector Filter - Offset',[
       prop('ADBE Vector Offset Amount',amount)

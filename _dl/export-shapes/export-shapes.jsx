@@ -42,15 +42,18 @@
         // Select all destinations before writing, so cancelling saves no files.
         for (i = 0; i < jobs.length; i++) {
             do {
-                file = new File(folder.fsName + '/' + jobs[i].name).saveDlg(
-                    'JSONを名前を付けて保存 (' + (i + 1) + '/' + jobs.length + ')', 'JSONファイル:*.json');
+                var previousFolder = Folder.current;
+                try {
+                    Folder.current = folder;
+                    file = new File(folder.fsName + '/' + jobs[i].name).saveDlg(
+                        'JSONを名前を付けて保存 (' + (i + 1) + '/' + jobs.length + ')', 'JSONファイル:*.json');
+                } finally { Folder.current = previousFolder; }
                 if (!file) { return; }
                 if (!/\.json$/i.test(file.name)) { file = new File(file.fsName + '.json'); }
                 var key = '$' + file.fsName.toLowerCase();
                 if (paths[key]) { alert('別のレイヤーと同じ保存先です。別名を指定してください。'); }
             } while (paths[key]);
             paths[key] = true;
-            folder = file.parent;
             jobs[i].file = file;
             exists = exists || file.exists;
         }

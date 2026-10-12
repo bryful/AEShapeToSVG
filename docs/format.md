@@ -51,5 +51,6 @@ Bezier曲線の長さ計算、パスの分割、複数シェイプへの適用�
 カレント時間・Expression適用後の値とContents内の順序を保持し、非表示の場合は除外します。
 アニメーション禁止モードでは半径のキーフレーム・有効なExpressionもエラーになります。
 既存の長方形の角丸半径（`ADBE Vector Rect Roundness`）とは別の演算子です。
-今回の実装範囲はJSON出力です。SVG変換での角丸演算は未実装です。
+SVG変換でも角丸演算を適用します。尖った頂点の前後を半径（各辺の半分を上限）で切り詰め、
+Bezier曲線で接続します。開いたパスの端点と既存の曲線ハンドルは維持します。
 matchNameの参照: https://ae-scripting.docsforadobe.dev/matchnames/layer/shapelayer/#round-corners

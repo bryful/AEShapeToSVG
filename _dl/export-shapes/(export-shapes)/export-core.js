@@ -12,6 +12,7 @@ var AEShapeExport = (function () {
         'ADBE Vector Filter - Repeater': 'repeater',
         'ADBE Vector Filter - Merge': 'mergePaths',
         'ADBE Vector Filter - Trim': 'trimPaths',
+        'ADBE Vector Filter - RC': 'roundCorners',
         'ADBE Vector Graphic - Fill': 'fill',
         'ADBE Vector Graphic - Stroke': 'stroke',
         'ADBE Vector Graphic - G-Fill': 'gradientFill',

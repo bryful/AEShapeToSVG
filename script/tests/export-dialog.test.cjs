@@ -6,6 +6,7 @@ const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '../export-shapes.jsx'), 'utf8').replace(/^#.*$/gm, '');
 function run(choices, options = {}) {
     const writes = [], suggestions = [], alerts = [], labels = [], evaluations = [];
+    const folders = {myDocuments: {fsName: '/documents'}, current: {fsName: '/original'}};
     let prompt = 0;
     function File(name) {
         this.fsName = name;
@@ -14,6 +15,7 @@ function run(choices, options = {}) {
         this.exists = !!options.exists;
     }
     File.prototype.saveDlg = function () {
+        assert.equal(folders.current.fsName, '/project');
         suggestions.push(this.fsName);
         const choice = choices[prompt++];
         return choice == null ? null : new File(choice);
@@ -29,7 +31,7 @@ function run(choices, options = {}) {
         this.selectedLayers = (options.layers || ['シェイプ 1']).map(name => ({name, matchName: 'ADBE Vector Layer'}));
     }
     vm.runInNewContext(source, {
-        CompItem, File, Folder: {myDocuments: {fsName: '/documents'}}, Window: Widget,
+        CompItem, File, Folder: folders, Window: Widget,
         app: {project: {activeItem: new CompItem(), file: new File('/project/test.aep')}},
         AEShapeExport: {
             safeName: name => name.replace(/[<>:"/\\|?*]/g, '_'),
@@ -41,6 +43,7 @@ function run(choices, options = {}) {
         },
         alert: message => alerts.push(message), confirm: () => !options.declineOverwrite
     });
+    assert.equal(folders.current.fsName, '/original');
     return {writes, suggestions, alerts, labels, evaluations};
 }
 let result = run(['/chosen/別名']);
@@ -50,7 +53,7 @@ assert.deepEqual(result.evaluations, [{time: 1.25, strict: false}]);
 assert(result.labels.includes('キャンセル'));
 assert(result.alerts[0].includes('JSONを保存しました'));
 result = run(['/chosen/一番.JSON', '/chosen/二番.json'], {layers: ['同名', '同名']});
-assert.deepEqual(result.suggestions, ['/project/コンポ 1_同名.json', '/chosen/コンポ 1_同名_2.json']);
+assert.deepEqual(result.suggestions, ['/project/コンポ 1_同名.json', '/project/コンポ 1_同名_2.json']);
 assert.equal(result.writes[0].path, '/chosen/一番.JSON');
 assert.equal(result.writes.length, 2);
 result = run(['/chosen/一番.json', null], {layers: ['A', 'B']});
