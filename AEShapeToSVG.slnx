@@ -11,11 +11,15 @@
   <Folder Name="/script/(export-shapes)/">
     <File Path="script/(export-shapes)/export-core.js" />
     <File Path="script/(export-shapes)/export-runner.js" />
+    <File Path="script/(export-shapes)/export-settings.js" />
+    <File Path="script/(export-shapes)/export-illustrator.js" />
   </Folder>
   <Folder Name="/script/tests/">
     <File Path="script/tests/export-core.test.cjs" />
     <File Path="script/tests/export-dialog.test.cjs" />
     <File Path="script/tests/export-runner.integration.cjs" />
+    <File Path="script/tests/export-illustrator.test.cjs" />
+    <File Path="script/tests/export-settings.test.cjs" />
   </Folder>
   <Folder Name="/docs/">
     <File Path="docs/format.md" />

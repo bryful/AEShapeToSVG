@@ -8,9 +8,11 @@ export-shapes.jsx
 export-shapes.exe
 (export-shapes)/export-core.js
 (export-shapes)/export-runner.js
+(export-shapes)/export-settings.js
+(export-shapes)/export-illustrator.js
 ```
 
-Shapeレイヤーを選択し、保存先を指定します。
+Shapeレイヤーを1枚だけ選択し、「名前を付けて保存」で保存先とファイル名を指定します。
 AEの環境設定でスクリプトによるファイル書き込みを許可してください。
 Windows標準のWindows PowerShellを使ってexeを起動します。
 
@@ -42,13 +44,14 @@ SVG変換側でも角丸演算に対応します。開いたパスの端点と�
 置換だけを理由に `complete: false` にしたり、継続確認を表示したりしません。
 AEの元レイヤーは変更しません。アニメーション禁止モードでは省略する設定も検査します。
 
-日本語ダイアログの「名前を付けて保存」で、レイヤーごとに保存先とファイル名を指定します。
-初期名は `<コンポジション名>_<レイヤー名>.svg` です。禁止文字を置換し、同名は連番を付けます。
-初期フォルダーはAEプロジェクトの保存場所（未保存ならドキュメント）です。
-複数レイヤーでも、各保存ダイアログはaepのあるフォルダーから開始します。
-拡張子 `.svg` がなければ付加します。複数レイヤーで同じ保存先は指定できません。
-全レイヤーの取得・JSON化と保存先選択が終わってから保存し、既存ファイルの上書きは確認します。
-保存先選択をキャンセルした場合、どのレイヤーも保存しません。
+選択したシェイプレイヤー1枚のみを書き出します。複数選択時はエラーにします。
+「名前を付けて保存」の初期ファイル名は `<コンポジション名>_<レイヤー名>.svg` です。
+禁止文字は置換します。ファイル名は自由に変更でき、SVG拡張子を省略した場合は補います。
+最後に選択した保存先フォルダーを次回の初期フォルダーとして記憶します。
+未指定、または記憶したフォルダーがなくなった場合はaepのあるフォルダー（未保存ならドキュメント）です。
+「保存先の記憶を解除」でaepのあるフォルダーへ戻せます。
+値の取得・JSON化と保存先選択が終わってから保存し、既存ファイルの上書きを確認します。
+保存先選択をキャンセルした場合は保存しません。
 I/Oエラーで途中停止した場合、既に保存されたファイルは残ります。
 
 標準ではSVGだけを保存します。「中間JSONをSVGと一緒に残す」を有効にすると、
@@ -67,6 +70,8 @@ AE未インストール環境での確認:
 node script/tests/export-core.test.cjs
 node script/tests/export-dialog.test.cjs
 node script/tests/export-runner.integration.cjs
+node script/tests/export-settings.test.cjs
+node script/tests/export-illustrator.test.cjs
 ```
 
 取得・ダイアログはモック確認です。runnerは実際のexeを使い、日本語・空白・記号を含むパス、
@@ -75,7 +80,23 @@ node script/tests/export-runner.integration.cjs
 
 参考: https://ae-scripting.docsforadobe.dev/matchnames/layer/shapelayer/
 
+## AI出力
+
+「AIも書き出す」をONにすると、SVGと同じ場所・同じベース名の `.ai` を追加保存します。
+SVG単独への切り替えも可能です。AI出力のON/OFFと使用するIllustratorのパスはAEのユーザー設定に記憶します。
+初回はBridgeTalkに登録されたIllustratorを自動検出します。複数ある場合、最も新しいバージョンを選びます。
+見つからない場合、または記憶したexeがなくなった場合はファイル選択で `Illustrator.exe` を指定します。
+「Illustratorを選択／バージョン変更」で、使用する実行ファイルをいつでも選び直せます。
+選んだexeと一致するBridgeTalkのバージョンを使い、異なるバージョンへ自動的に切り替えることはありません。
+未登録のインストール先を選んだ場合は起動して再検出します。識別できない場合は、起動完了後の再実行が必要です。
+
+IllustratorにSVGを開かせ、コンポサイズのアートボードでネイティブAI（PDF互換あり）として保存します。
+Illustratorは起動したままにし、変換用に開いたドキュメントだけを保存後に閉じます。
+Illustratorの通常のドキュメントを編集したり閉じたりしません。
+SVG保存後にAIを変換するため、AI変換に失敗してもSVGは残ります。失敗時の作業フォルダーも残します。
+Illustratorの起動・応答待ちは最大約3分です。タイムアウト後に処理されてもAIは一時フォルダー内に留まります。
+AI変換・バージョン選択はモック検証済みです。AE／Illustrator実機での連携確認は別途必要です。
+
 ## 今後の出力（未実装）
 
-AI出力は将来の追加機能として、Illustratorを呼び出してSVGからAIを作成する予定です。
 PDF / Inkscape連携も別途実装します。

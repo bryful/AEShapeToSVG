@@ -74,3 +74,4 @@ node tests/svg.integration.cjs script/export-shapes.exe <sharpのモジュール
 配布時も `export-shapes.jsx` と同じ場所に置いてください。最後にビルドした構成のexeが配置されます。
 スクリプトからexeを自動起動してSVGを保存します。通常の出力では中間JSONを削除し、
 「中間JSONをSVGと一緒に残す」で保持できます。変換失敗時は調査用のJSONとログを残します。
+AI出力はスクリプト側でIllustratorを呼び出して行います。C++アプリはSVG生成を担当します。

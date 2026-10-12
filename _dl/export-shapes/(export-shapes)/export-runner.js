@@ -65,5 +65,5 @@ var AEShapeRunner = (function () {
         if (!failed.length && !folder.remove()) { failed.push(folder.fsName); }
         return failed;
     }
-    return {write: write, workFolder: workFolder, command: command, convert: convert, cleanup: cleanup};
+    return {write: write, read: read, workFolder: workFolder, command: command, convert: convert, cleanup: cleanup};
 }());
