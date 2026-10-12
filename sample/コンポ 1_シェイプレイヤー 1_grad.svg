@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000" overflow="hidden">
+  <title>シェイプレイヤー 1</title>
+  <defs>
+  <linearGradient id="gradient1" gradientUnits="userSpaceOnUse" color-interpolation="sRGB" x1="-50" y1="0" x2="50" y2="0">
+    <stop offset="0" stop-color="rgb(255,0,0)" stop-opacity="1" />
+    <stop offset="0.5" stop-color="rgb(128,0,0)" stop-opacity="1" />
+    <stop offset="1" stop-color="rgb(0,0,0)" stop-opacity="1" />
+  </linearGradient>
+  <linearGradient id="gradient2" gradientUnits="userSpaceOnUse" color-interpolation="sRGB" x1="-50" y1="0" x2="50" y2="0">
+    <stop offset="0" stop-color="rgb(0,255,0)" stop-opacity="1" />
+    <stop offset="0.5" stop-color="rgb(128,255,128)" stop-opacity="1" />
+    <stop offset="1" stop-color="rgb(255,255,255)" stop-opacity="1" />
+  </linearGradient>
+  <linearGradient id="gradient3" gradientUnits="userSpaceOnUse" color-interpolation="sRGB" x1="-50" y1="0" x2="50" y2="0">
+    <stop offset="0" stop-color="rgb(0,0,255)" stop-opacity="1" />
+    <stop offset="0.5" stop-color="rgb(128,128,255)" stop-opacity="1" />
+    <stop offset="1" stop-color="rgb(255,255,255)" stop-opacity="1" />
+  </linearGradient>
+  <linearGradient id="gradient4" gradientUnits="userSpaceOnUse" color-interpolation="sRGB" x1="-50" y1="0" x2="50" y2="0">
+    <stop offset="0" stop-color="rgb(0,0,255)" stop-opacity="1" />
+    <stop offset="0.25" stop-color="rgb(0,0,255)" stop-opacity="0.5" />
+    <stop offset="0.5" stop-color="rgb(0,0,255)" stop-opacity="0.333333333" />
+    <stop offset="1" stop-color="rgb(0,0,255)" stop-opacity="0" />
+  </linearGradient>
+  </defs>
+  <g transform="translate(500.000000 500.000000)">
+  <path d="M-50 -50L50 -50L50 50L-50 50Z" transform="matrix(1 0 0 1 -127 0)" opacity="1" stroke="none" fill="url(#gradient1)" fill-rule="nonzero" />
+  <path d="M-50 -50L50 -50L50 50L-50 50Z" transform="matrix(1 0 0 1 0 0)" opacity="1" stroke="none" fill="url(#gradient2)" fill-rule="nonzero" />
+  <path d="M-50 -50L50 -50L50 50L-50 50Z" transform="matrix(1 0 0 1 133 0)" opacity="1" stroke="none" fill="url(#gradient3)" fill-rule="nonzero" />
+  <path d="M-50 -50L50 -50L50 50L-50 50Z" transform="matrix(1 0 0 1 305 0)" opacity="1" stroke="none" fill="url(#gradient4)" fill-rule="nonzero" />
+  </g>
+</svg>
