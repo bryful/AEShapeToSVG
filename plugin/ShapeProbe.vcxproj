@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>18.0</VCProjectVersion><ProjectGuid>{C5F578DB-28C6-42C9-9847-DF92975C43F4}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword><RootNamespace>ShapeProbe</RootNamespace><WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType><PlatformToolset>v145</PlatformToolset><CharacterSet>Unicode</CharacterSet>
+    <UseDebugLibraries Condition="'$(Configuration)'=='Debug'">true</UseDebugLibraries>
+    <UseDebugLibraries Condition="'$(Configuration)'=='Release'">false</UseDebugLibraries>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir><IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
+    <TargetExt>.aex</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(ProjectDir)Headers;$(ProjectDir)Headers\SP;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard><WarningLevel>Level4</WarningLevel><ExceptionHandling>Sync</ExceptionHandling>
+      <DebugInformationFormat Condition="'$(Configuration)'=='Release'">None</DebugInformationFormat>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions><AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link><AdditionalDependencies>comdlg32.lib;user32.lib;%(AdditionalDependencies)</AdditionalDependencies><GenerateDebugInformation Condition="'$(Configuration)'=='Debug'">true</GenerateDebugInformation><GenerateDebugInformation Condition="'$(Configuration)'=='Release'">false</GenerateDebugInformation></Link>
+  </ItemDefinitionGroup>
+  <ItemGroup><ClCompile Include="ShapeProbe.cpp" /></ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="ShapeProbePiPL.r">
+      <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(ProjectDir)Generate-PiPL.ps1" -OutputPath "$(IntDir)ShapeProbePiPL.rc"</Command>
+      <Outputs>$(IntDir)ShapeProbePiPL.rc</Outputs><AdditionalInputs>$(ProjectDir)Generate-PiPL.ps1;%(AdditionalInputs)</AdditionalInputs>
+    </CustomBuild>
+    <ResourceCompile Include="$(IntDir)ShapeProbePiPL.rc" />
+    <None Include="README.md" />
+    <None Include="Generate-PiPL.ps1" />
+    <None Include="Verify-Build.ps1" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

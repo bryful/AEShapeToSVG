@@ -1,0 +1,23 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="asts/asts.vcxproj" Id="4660ab69-65d6-46c6-b4f8-5939560e865d" />
+  <Project Path="plugin/ShapeProbe.vcxproj" Id="c5f578db-28c6-42c9-9847-df92975c43f4">
+    <Platform Project="x64" />
+  </Project>
+  <Folder Name="/script/">
+    <File Path="script/export-shapes.jsx" />
+    <File Path="script/README.md" />
+  </Folder>
+  <Folder Name="/script/lib/">
+    <File Path="script/lib/export-core.js" />
+  </Folder>
+  <Folder Name="/script/tests/">
+    <File Path="script/tests/export-core.test.cjs" />
+  </Folder>
+  <Folder Name="/docs/">
+    <File Path="docs/format.md" />
+  </Folder>
+</Solution>
