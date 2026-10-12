@@ -33,6 +33,10 @@ var AEShapeRunner = (function () {
         }
         return result;
     }
+    function powershell(script) {
+        return 'cmd.exe /d /s /c ""%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"' +
+            ' -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand ' + encodedCommand(script) + '"';
+    }
     function command(exe, input, output, log) {
         // Paths stay in PowerShell literal strings inside the encoded payload.
         // cmd.exe never interprets user-controlled %, &, apostrophes or parentheses.
@@ -41,8 +45,7 @@ var AEShapeRunner = (function () {
             ' -Encoding utf8; $code=$LASTEXITCODE; if ($null -eq $code) { $code=-1 }; ' +
             '[System.IO.File]::WriteAllText(' + literal(log.fsName + '.status') +
             ', [string]$code, [System.Text.Encoding]::ASCII)';
-        return 'cmd.exe /d /s /c ""%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"' +
-            ' -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand ' + encodedCommand(script) + '"';
+        return powershell(script);
     }
     function convert(exe, input, output, log) {
         var status = new File(log.fsName + '.status');

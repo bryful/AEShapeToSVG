@@ -9,12 +9,10 @@
         var comp = app.project ? app.project.activeItem : null;
         if (!(comp instanceof CompItem)) { throw new Error('コンポジションを開いてください。'); }
         var time = comp.time;
-        var selected = comp.selectedLayers, layers = [], ignored = 0, i;
-        for (i = 0; i < selected.length; i++) {
-            if (selected[i].matchName === 'ADBE Vector Layer') { layers.push(selected[i]); }
-            else { ignored++; }
+        var selected = comp.selectedLayers, i;
+        if (selected.length !== 1 || selected[0].matchName !== 'ADBE Vector Layer') {
+            throw new Error('シェイプレイヤーを1枚だけ選択してください。');
         }
-        if (!layers.length) { throw new Error('シェイプレイヤーを1つ以上選択してください。'); }
         if ($.os.toLowerCase().indexOf('windows') < 0) { throw new Error('SVG書き出しはWindowsに対応しています。'); }
         var exe = new File(new File($.fileName).parent.fsName + '/export-shapes.exe');
         if (!exe.exists) { throw new Error('export-shapes.jsxと同じフォルダーにexport-shapes.exeを配置してください。\n' + exe.fsName); }
@@ -23,7 +21,7 @@
         var dialog = new Window('dialog', 'シェイプのSVG／AI書き出し');
         dialog.orientation = 'column';
         dialog.alignChildren = 'left';
-        dialog.add('statictext', undefined, '対象レイヤー: ' + layers.length + ' / 対象外: ' + ignored);
+        dialog.add('statictext', undefined, '対象レイヤー: ' + selected[0].name);
         dialog.add('statictext', undefined, 'カレント時間の静止画: ' + time + ' 秒');
         var keepJson = dialog.add('checkbox', undefined, '中間JSONをSVGと一緒に残す');
         keepJson.value = false;
@@ -64,44 +62,27 @@
             if (!illustratorPath) { return; }
             AEShapeSettings.set('illustratorPath', illustratorPath);
         }
-        // Evaluate and serialize every layer before writing any files.
-        var jobs = [], warnings = 0, doc, file, base, suffix, used = {}, paths = {}, exists = false;
-        for (i = 0; i < layers.length; i++) {
-            doc = AEShapeExport.documentFor(comp, layers[i], time, strict.value);
-            warnings += doc.warnings.length;
-            base = AEShapeExport.safeName(comp.name + '_' + layers[i].name);
-            suffix = base;
-            var serial = 2;
-            while (used['$' + suffix.toLowerCase()]) { suffix = base + '_' + serial++; }
-            used['$' + suffix.toLowerCase()] = true;
-            jobs.push({name: suffix + '.svg', text: AEShapeExport.stringify(doc),
-                canvas: {width: comp.width, height: comp.height}});
-        }
+        // Evaluate the selected layer before opening the save dialog or writing files.
+        var doc = AEShapeExport.documentFor(comp, selected[0], time, strict.value);
+        var warnings = doc.warnings.length, file, exists = false;
+        var jobs = [{name: AEShapeExport.safeName(comp.name + '_' + selected[0].name) + '.svg',
+            text: AEShapeExport.stringify(doc), canvas: {width: comp.width, height: comp.height}}];
         if (warnings) { throw new Error('取得できない値があるためSVGに変換できません。警告: ' + warnings + ' 件'); }
-        // File.saveDlg uses this File as the initial filename (native Save As dialog).
-        // Select all destinations before writing, so cancelling saves no files.
+        var previousFolder = Folder.current;
+        try {
+            Folder.current = folder;
+            file = new File(folder.fsName + '/' + jobs[0].name).saveDlg('SVGを名前を付けて保存', 'SVGファイル:*.svg');
+        } finally { Folder.current = previousFolder; }
+        if (!file) { return; }
+        if (!/\.svg$/i.test(file.name)) { file = new File(file.fsName + '.svg'); }
+        AEShapeSettings.set('outputFolder', file.parent.fsName);
         for (i = 0; i < jobs.length; i++) {
-            do {
-                var previousFolder = Folder.current;
-                try {
-                    Folder.current = folder;
-                    file = new File(folder.fsName + '/' + jobs[i].name).saveDlg(
-                        'SVGを名前を付けて保存 (' + (i + 1) + '/' + jobs.length + ')', 'SVGファイル:*.svg');
-                } finally { Folder.current = previousFolder; }
-                if (!file) { return; }
-                if (!/\.svg$/i.test(file.name)) { file = new File(file.fsName + '.svg'); }
-                var key = '$' + file.fsName.toLowerCase();
-                if (paths[key]) { alert('別のレイヤーと同じ保存先です。別名を指定してください。'); }
-            } while (paths[key]);
-            paths[key] = true;
             jobs[i].file = file;
             jobs[i].json = new File(file.fsName.replace(/\.svg$/i, '.json'));
             jobs[i].ai = new File(file.fsName.replace(/\.svg$/i, '.ai'));
             exists = exists || file.exists;
             if (keepJson.value) { exists = exists || jobs[i].json.exists; }
             if (exportAi.value) { exists = exists || jobs[i].ai.exists; }
-            folder = file.parent;
-            AEShapeSettings.set('outputFolder', folder.fsName);
         }
         if (exists && !confirm('既存の出力ファイルを上書きしますか？')) { return; }
         var written = 0, aiWritten = 0, saved = [], cleanupWarnings = [];
