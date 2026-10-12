@@ -71,20 +71,45 @@ var AEShapeExport = (function () {
                 n.matchName = stroke ? 'ADBE Vector Graphic - Stroke' : 'ADBE Vector Graphic - Fill';
                 n.kind = stroke ? 'stroke' : 'fill';
                 n.replacement = 'gradientToSolid';
+                n.gradientRequest = {timeSeconds: time, keyframeCount: 0, expressionEnabled: false, properties: {}};
+                // A gradient with any keyed parameter falls back locally, even in strict mode.
+                var countGradientKeys = function (property) {
+                    if (property.propertyType === PropertyType.PROPERTY) {
+                        n.gradientRequest.keyframeCount += property.numKeys || 0;
+                        if (property.matchName === 'ADBE Vector Grad Colors') {
+                            n.gradientRequest.expressionEnabled = !!property.expressionEnabled;
+                        }
+                    } else {
+                        for (var k = 1; k <= property.numProperties; k++) { countGradientKeys(property.property(k)); }
+                    }
+                };
+                countGradientKeys(p);
+                if (n.gradientRequest.keyframeCount > 0) { n.gradientRequest.error = 'GRADIENT_KEY_ANIMATION'; }
             }
             for (i = 1; i <= p.numProperties; i++) {
                 child = p.property(i);
                 // AE enumerates unused dash/gap slots too. Hidden slots cannot accept expressions.
                 if (p.matchName === 'ADBE Vector Stroke Dashes' && child.canSetExpression === false) { continue; }
                 if (gradient && child.matchName.indexOf('ADBE Vector Grad ') === 0) {
-                    // Strict mode still checks animation on discarded gradient settings.
-                    if (strict && (child.numKeys > 0 || child.expressionEnabled)) {
-                        fail(path + '/' + child.name, 'アニメーション禁止モードでアニメーションを検出しました');
+                    if (child.matchName !== 'ADBE Vector Grad Colors') {
+                        try {
+                            n.gradientRequest.properties[child.matchName] = read(child, time, false, warnings, path, false).value;
+                        } catch (gradientError) {
+                            n.gradientRequest.error = 'GRADIENT_PROPERTY_ERROR';
+                            n.gradientRequest.message = gradientError.toString();
+                        }
                     }
                     continue;
                 }
-                childNode = read(child, time, strict, warnings, path,
-                    p.matchName === 'ADBE Root Vectors Group' || p.matchName === 'ADBE Vectors Group');
+                try {
+                    childNode = read(child, time, gradient ? false : strict, warnings, path,
+                        p.matchName === 'ADBE Root Vectors Group' || p.matchName === 'ADBE Vectors Group');
+                } catch (paintError) {
+                    if (!gradient) { throw paintError; }
+                    n.gradientRequest.error = 'GRADIENT_PROPERTY_ERROR';
+                    n.gradientRequest.message = paintError.toString();
+                    childNode = null;
+                }
                 if (childNode !== null) { n.children.push(childNode); }
             }
             if (gradient) {
@@ -142,6 +167,8 @@ var AEShapeExport = (function () {
         return {format: 'ae-shape-contents', schemaVersion: 1,
             scope: 'contentsOnly', complete: warnings.length === 0,
             source: {application: 'After Effects', version: app.version,
+                projectFile: app.project && app.project.file ? app.project.file.fsName : null,
+                projectDirty: app.project ? !!app.project.dirty : false,
                 composition: {name: comp.name, width: comp.width, height: comp.height,
                     pixelAspect: comp.pixelAspect, frameRate: comp.frameRate, displayStartTime: comp.displayStartTime},
                 layer: {name: layer.name, index: layer.index, anchorPoint: anchor, position: position},

@@ -90,6 +90,18 @@ assert.equal(doc.warnings.length, 0);
 assert.equal(doc.contents.children[0].kind, 'fill');
 assert.equal(doc.contents.children[0].matchName, 'ADBE Vector Graphic - Fill');
 assert.deepEqual(doc.contents.children[0].children[0].value, [1, 0, 0, 1]);
+// Any keyed gradient parameter falls back, while other animation still obeys strict mode.
+for (const key of ['ADBE Vector Grad Start Pt', 'ADBE Vector Stroke Width']) {
+    doc = AEShapeExport.documentFor(comp, layer([group('ADBE Vector Graphic - G-Stroke', [
+        leaf(key, key.indexOf('Pt') >= 0 ? [0, 0] : 8, {numKeys: 1}),
+        leaf('ADBE Vector Grad Colors', null)
+    ])]), 2.5, true);
+    assert.equal(doc.complete, true);
+    assert.equal(doc.source.evaluation.timeSeconds, 2.5);
+    assert.equal(doc.contents.children[0].gradientRequest.timeSeconds, 2.5);
+    assert.equal(doc.contents.children[0].gradientRequest.keyframeCount, 1);
+    assert.deepEqual(doc.contents.children[0].children.slice(-1)[0].value, [0, 0, 1, 1]);
+}
 doc = AEShapeExport.documentFor(comp, layer([group('ADBE Vector Graphic - G-Stroke', [
     leaf('ADBE Vector Grad Start Pt', [0, 0]), leaf('ADBE Vector Grad Colors', null),
     leaf('ADBE Vector Stroke Width', 8), leaf('ADBE Vector Stroke Opacity', 35),
@@ -104,9 +116,13 @@ assert.deepEqual(solid.children[3].value, [0, 0, 1, 1]);
 assert.ok(solid.children.every(p => !p.matchName.startsWith('ADBE Vector Grad ')));
 assert.equal(doc.complete, true);
 assert.deepEqual(JSON.parse(AEShapeExport.stringify(doc)), doc);
-assert.throws(() => AEShapeExport.documentFor(comp, layer([group('ADBE Vector Graphic - G-Fill', [
+doc = AEShapeExport.documentFor(comp, layer([group('ADBE Vector Graphic - G-Fill', [
     leaf('ADBE Vector Grad Colors', null, {numKeys: 1})
-])]), 0, true), /アニメーション/);
+])]), 1.25, true);
+assert.equal(doc.complete, true);
+assert.equal(doc.contents.children[0].gradientRequest.error, 'GRADIENT_KEY_ANIMATION');
+assert.equal(doc.contents.children[0].gradientRequest.timeSeconds, 1.25);
+assert.deepEqual(doc.contents.children[0].children[0].value, [1, 0, 0, 1]);
 const shape = {vertices: [[0, 0], [10, 10]], inTangents: [[0, 0], [-1, -1]], outTangents: [[1, 1], [0, 0]], closed: false};
 for (const mode of [1, 2]) {
     const trim = group('ADBE Vector Filter - Trim', [

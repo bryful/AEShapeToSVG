@@ -69,6 +69,7 @@ function run(choices, options = {}) {
             convert: (exe,input,output,log) => {
                 conversions.push({exe:exe.fsName,input:input.fsName,output:output.fsName});
                 if(options.failConversion) throw Error('SVG変換に失敗しました');
+                return options.gradientFallback ? 'Gradient fallback: test: GRADIENT_KEY_ANIMATION\nSVG saved\n' : '';
             },
             cleanup: folder => {cleaned.push(folder.fsName);return [];}
         },
@@ -116,3 +117,7 @@ result=run([null],{preferences,resetFolder:true,changeIllustrator:true,chosenPat
 assert.equal(result.suggestions[0],'/project/コンポ 1_シェイプ 1.svg');assert.equal(preferences.illustratorPath,'/AI30/Illustrator.exe');
 result=run([null],{layers:['a/b']});assert.equal(result.suggestions[0],'/project/コンポ 1_a_b.svg');
 console.log('Export dialog mock tests passed');
+result=run(['/chosen/name.svg'],{gradientFallback:true});
+assert(result.alerts[0].includes('グラデーション取得エラー'));
+assert(result.alerts[0].includes('塗りは赤・線は青'));
+assert.deepEqual(result.copies,['/chosen/name.svg']);

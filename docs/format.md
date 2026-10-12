@@ -32,9 +32,22 @@ Shapeは `vertices`, `inTangents`, `outTangents`, `closed` を持ち、接線は
 `status` は `evaluated`, `noValue`, `unavailable`, `replacement`。
 グラデーション塗り/線は `kind: fill/stroke` と通常塗り/線のmatchNameに置換します。
 元のmatchNameは `sourceMatchName`、置換理由は `replacement: "gradientToSolid"` に保存します。
-グラデーション固有の子は除外し、通常色ノードを末尾に追加します。
+グラデーション固有の子は通常のchildrenから除外し、通常色ノードを末尾に追加します。
 塗りの色はRGBA `[1,0,0,1]`、線の色は `[0,0,1,1]`、色ノードのstatusは `replacement`。
 共通プロパティと全体の不透明度は保持します。置換は仕様として扱い、completeをfalseにしません。
+
+`source.projectFile` は保存済みaepの絶対パス（未保存はnull）、`source.projectDirty` は未保存の変更の有無です。
+グラデーションには `gradientRequest` を追加します。
+`timeSeconds` は `source.evaluation.timeSeconds` と同じコンポ時間（秒）、
+`keyframeCount` はグラデーション配下のキー数合計、`expressionEnabled` は色のExpression有効状態です。
+`properties` は開始点・終了点・種類・ハイライト等のmatchNameをキーとする、同時刻の評価済み値です。
+キーが1個以上なら `error: "GRADIENT_KEY_ANIMATION"` を記録し、アニメーション禁止設定に関係なく局所的に置換します。
+exeはRIFXチャンクの親境界を確認してaepを読み、コンポ／レイヤー／Contentsの名前の階層が一致するGCst内のXMLを解析します。
+候補が複数ある場合や取得できない場合、既定の白黒で成功扱いせず単色置換にします。
+取得成功時のみメモリー内のノードに `gradient` を補完し、`replacement` を除去してSVGのpaintとして出力します。
+XMLの色配列は `[位置,中間点,R,G,B,補助値]`、不透明度配列は `[位置,中間点,不透明度]` です。
+中間点はBodymovin同様に追加ストップで近似します。重複位置・退化した中間点は現時点で置換対象です。
+保存する中間JSON自体は取得要求の状態なので、再変換には元のaepが必要です。
 
 グループTransformを含む元のローカル座標を保持します。境界計算、変形適用、
 パラメトリック形状生成、オフセット・リピーター展開は変換アプリの責務です。

@@ -40,7 +40,7 @@ var AEShapeRunner = (function () {
     function command(exe, input, output, log) {
         // Paths stay in PowerShell literal strings inside the encoded payload.
         // cmd.exe never interprets user-controlled %, &, apostrophes or parentheses.
-        var script = '$ErrorActionPreference="Continue"; & ' + literal(exe.fsName) + ' ' + literal(input.fsName) +
+        var script = '$ErrorActionPreference="Continue"; [Console]::OutputEncoding=[System.Text.Encoding]::UTF8; & ' + literal(exe.fsName) + ' ' + literal(input.fsName) +
             ' ' + literal(output.fsName) + ' 2>&1 | Out-File -LiteralPath ' + literal(log.fsName) +
             ' -Encoding utf8; $code=$LASTEXITCODE; if ($null -eq $code) { $code=-1 }; ' +
             '[System.IO.File]::WriteAllText(' + literal(log.fsName + '.status') +
@@ -59,6 +59,7 @@ var AEShapeRunner = (function () {
             throw new Error('SVG変換に失敗しました。\n終了コード: ' + (code || '取得できません') +
                 '\n' + read(log) + '\n中間JSON: ' + input.fsName + '\nログ: ' + log.fsName);
         }
+        return read(log);
     }
     function cleanup(folder, files) {
         var failed = [];

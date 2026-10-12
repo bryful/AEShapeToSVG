@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "SvgExporter.h"
+#include "AepGradients.h"
 #include "third_party/nlohmann/json.hpp"
 #include <Windows.h>
 #include <algorithm>
@@ -776,6 +777,8 @@ class Exporter
     {
         auto result = Contents(document.at("contents"));
         std::ostringstream body;
+        std::ostringstream definitions;
+        size_t gradientId = 0;
         body.imbue(std::locale::classic());
         body << std::setprecision(9);
         D2D1_RECT_F bounds{};
@@ -858,11 +861,17 @@ class Exporter
                  << ")\" opacity=\"" << std::clamp(opacity, 0.0, 1.0) << "\" ";
             std::ostringstream c;
             c << "rgb(" << rgb[0] << ',' << rgb[1] << ',' << rgb[2] << ')';
+            std::string paint = c.str();
+            if (style.contains("gradient")) {
+                auto id = "gradient" + std::to_string(++gradientId);
+                definitions << GradientSvg(style.at("gradient"), id);
+                paint = "url(#" + id + ")";
+            }
             if (stroke)
             {
                 int cap = int(Get(style, "ADBE Vector Stroke Line Cap", 1)),
                     join = int(Get(style, "ADBE Vector Stroke Line Join", 1));
-                body << "fill=\"none\" stroke=\"" << c.str() << "\" stroke-width=\"" << width << "\" stroke-linecap=\""
+                body << "fill=\"none\" stroke=\"" << paint << "\" stroke-width=\"" << width << "\" stroke-linecap=\""
                      << (cap == 2   ? "round"
                          : cap == 3 ? "square"
                                     : "butt")
@@ -898,7 +907,7 @@ class Exporter
                 }
             }
             else
-                body << "stroke=\"none\" fill=\"" << c.str() << "\" fill-rule=\""
+                body << "stroke=\"none\" fill=\"" << paint << "\" fill-rule=\""
                      << (Get(style, "ADBE Vector Fill Rule", 1) == 2 ? "evenodd" : "nonzero") << "\"";
             body << " />\n";
         }
@@ -939,6 +948,7 @@ class Exporter
             << ' ' << y << ' ' << w << ' ' << h << "\" width=\"" << w << "\" height=\"" << h
             << "\" overflow=\"hidden\">\n  <title>"
             << Escape(document.at("source").at("layer").at("name").get<std::string>()) << "</title>\n"
+            << (gradientId ? "  <defs>\n" + definitions.str() + "  </defs>\n" : "")
             << (compCanvas ? "  <g transform=\"translate(" + std::to_string(translateX) + " " +
                                  std::to_string(translateY) + ")\">\n"
                            : "")
@@ -981,6 +991,7 @@ void ExportSvg(const std::filesystem::path &input, const std::filesystem::path &
     if (!doc.value("complete", false))
         throw std::runtime_error("Incomplete export");
     size_t count = 0;
+    ResolveGradients(doc);
     Validate(doc.at("contents"), 0, count);
     Exporter exporter;
     auto svg = exporter.Render(doc, margin);

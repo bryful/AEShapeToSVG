@@ -45,6 +45,16 @@ try {
     assert.equal(fs.readFileSync(log.fsName+'.status','ascii'),'0');
     assert(fs.readFileSync(output.fsName,'utf8').includes('<svg'));
     assert(fs.readFileSync(log.fsName,'utf8').includes('SVG saved'));
+    // A local gradient error writes stderr, but native conversion still exits successfully.
+    const fallbackDoc=JSON.parse(fs.readFileSync(input.fsName,'utf8'));
+    fallbackDoc.contents.children.push({kind:'fill',name:'グラデーションテスト',matchName:'ADBE Vector Graphic - Fill',
+      gradientRequest:{keyframeCount:1},children:[{matchName:'ADBE Vector Fill Color',value:[1,0,0,1]}]});
+    runner.write(input,JSON.stringify(fallbackDoc));
+    const fallbackLog=runner.convert(exe,input,output,log);
+    assert(fallbackLog.includes('Gradient fallback:'));
+    assert(fallbackLog.includes('グラデーションテスト'));
+    assert(fallbackLog.includes('GRADIENT_KEY_ANIMATION'));
+    assert.equal(fs.readFileSync(log.fsName+'.status','ascii'),'0');
     const actualCall=context.system.callSystem;
     context.system.callSystem=()=> 'AE_SHAPE_EXIT=0\r\n';
     // A previous successful SVG/status and a stdout marker cannot hide a launch failure.

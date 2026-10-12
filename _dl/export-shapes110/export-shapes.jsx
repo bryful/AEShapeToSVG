@@ -85,7 +85,7 @@
             if (exportAi.value) { exists = exists || jobs[i].ai.exists; }
         }
         if (exists && !confirm('既存の出力ファイルを上書きしますか？')) { return; }
-        var written = 0, aiWritten = 0, saved = [], cleanupWarnings = [];
+        var written = 0, aiWritten = 0, saved = [], cleanupWarnings = [], gradientErrors = [];
         for (i = 0; i < jobs.length; i++) {
             file = jobs[i].file;
             var work = AEShapeRunner.workFolder();
@@ -94,7 +94,11 @@
             var ai = new File(work.fsName + '/output.ai'), aiStatus = new File(work.fsName + '/illustrator.status');
             try {
                 AEShapeRunner.write(input, jobs[i].text + '\n');
-                AEShapeRunner.convert(exe, input, output, log);
+                var conversionLog = AEShapeRunner.convert(exe, input, output, log) || '';
+                var logLines = conversionLog.split(/\r?\n/);
+                for (var line = 0; line < logLines.length; line++) {
+                    if (logLines[line].indexOf('Gradient fallback:') >= 0) { gradientErrors.push(logLines[line]); }
+                }
                 if (!output.copy(file.fsName)) { throw new Error('SVGを保存できません: ' + file.fsName); }
                 saved.push(file.fsName);
                 written++;
@@ -117,6 +121,7 @@
         }
         alert('SVGを保存しました: ' + written + ' 件\n' + saved.join('\n') +
             (exportAi.value ? '\nAIを保存しました: ' + aiWritten + ' 件' : '') +
+            (gradientErrors.length ? '\nグラデーション取得エラー（塗りは赤・線は青に置換）:\n' + gradientErrors.join('\n') : '') +
             (cleanupWarnings.length ? '\n削除できなかった中間ファイル:\n' + cleanupWarnings.join('\n') : ''));
     } catch (e) { alert('シェイプの書き出しに失敗しました。\n' + e.toString()); }
 }());

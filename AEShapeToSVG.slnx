@@ -27,5 +27,6 @@
   </Folder>
   <Folder Name="/tests/">
     <File Path="tests/svg.integration.cjs" />
+    <File Path="tests/gradients.integration.cjs" />
   </Folder>
 </Solution>

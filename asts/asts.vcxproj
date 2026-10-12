@@ -154,6 +154,8 @@
   <ItemGroup>
     <ClCompile Include="asts.cpp" />
     <ClCompile Include="SvgExporter.cpp" />
+    <ClCompile Include="AepGradients.cpp" />
+    <ClInclude Include="AepGradients.h" />
     <ClInclude Include="SvgExporter.h" />
     <None Include="README.md" />
     <None Include="third_party\nlohmann\LICENSE.MIT" />
