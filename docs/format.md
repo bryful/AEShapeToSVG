@@ -1,12 +1,20 @@
 # Intermediate JSON v1
 
 1レイヤー1ファイル、UTF-8、`format: "ae-shape-contents"`、`schemaVersion: 1`。
-`scope: "contentsOnly"`。レイヤーTransformは含みません。
+`scope: "contentsOnly"`。形状はContentsを保持し、配置用のレイヤーのアンカーポイント・位置だけを補助情報として保存します。
 
 - `source`: AEバージョン、コンポジション情報、レイヤー名とインデックス、評価時刻（秒）。
 - `contents`: AE Contentsを再帰的に保持したルートノード。
 - `complete`: 取得できない値があればfalse。変換側はfalseを検出し、無条件に完成画像を出力しないこと。
 - `warnings`: 欠落理由のcode、path、message。
+
+`source.layer.anchorPoint` と `source.layer.position` はカレント時間・Expression適用後の座標配列です。
+2Dは2要素、3Dは3要素ですが、SVGではXYのみ使用します。位置の次元分割にも対応します。
+回転・スケール・親レイヤーの変換・3D投影は適用しません。
+SVGのキャンバスは `source.composition.width/height`、viewBoxは `0 0 width height` です。
+配置は `Contents座標 - anchorPoint + position` とし、キャンバス外はクリップします。
+旧JSONでアンカーがなければ `[0,0]`、位置がなければコンポ中央を使用します。
+コンポ情報自体がない旧JSONでは従来の描画範囲に合わせたキャンバスを使用します。
 
 各ノードは `name`, `matchName`, `index`（AEの1始まりのpropertyIndex。生成した色ノードは元グループのプロパティ数+1）を持ちます。
 表示名ではなくmatchNameで解釈してください。

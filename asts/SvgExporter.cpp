@@ -907,13 +907,42 @@ class Exporter
         double x = hasBounds ? bounds.left - margin : 0, y = hasBounds ? bounds.top - margin : 0,
                w = hasBounds ? std::max(1.0, double(bounds.right - bounds.left) + 2 * margin) : 1,
                h = hasBounds ? std::max(1.0, double(bounds.bottom - bounds.top) + 2 * margin) : 1;
+        double translateX = 0, translateY = 0;
+        const auto &source = document.at("source");
+        bool compCanvas = source.contains("composition");
+        if (compCanvas)
+        {
+            const auto &comp = source.at("composition");
+            w = Num(comp.at("width"));
+            h = Num(comp.at("height"));
+            if (w <= 0 || h <= 0)
+                throw std::runtime_error("Invalid composition dimensions");
+            auto layerPoint = [&](const char *key, P fallback) {
+                const auto &layer = source.at("layer");
+                if (!layer.contains(key))
+                    return fallback;
+                const auto &value = layer.at(key);
+                if (!value.is_array() || (value.size() != 2 && value.size() != 3))
+                    throw std::runtime_error("Expected 2D/3D layer position or anchor point");
+                return P{float(Num(value[0])), float(Num(value[1]))};
+            };
+            auto anchor = layerPoint("anchorPoint", {});
+            auto position = layerPoint("position", {float(w / 2), float(h / 2)});
+            translateX = double(position.x) - anchor.x;
+            translateY = double(position.y) - anchor.y;
+            x = y = 0;
+        }
         std::ostringstream svg;
         svg.imbue(std::locale::classic());
         svg << std::setprecision(9);
         svg << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"" << x
-            << ' ' << y << ' ' << w << ' ' << h << "\" width=\"" << w << "\" height=\"" << h << "\">\n  <title>"
+            << ' ' << y << ' ' << w << ' ' << h << "\" width=\"" << w << "\" height=\"" << h
+            << "\" overflow=\"hidden\">\n  <title>"
             << Escape(document.at("source").at("layer").at("name").get<std::string>()) << "</title>\n"
-            << body.str() << "</svg>\n";
+            << (compCanvas ? "  <g transform=\"translate(" + std::to_string(translateX) + " " +
+                                 std::to_string(translateY) + ")\">\n"
+                           : "")
+            << body.str() << (compCanvas ? "  </g>\n" : "") << "</svg>\n";
         return svg.str();
     }
 };

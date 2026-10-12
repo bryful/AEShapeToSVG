@@ -23,7 +23,7 @@
         dialog.add('statictext', undefined, 'カレント時間の静止画: ' + time + ' 秒');
         var keepJson = dialog.add('checkbox', undefined, '中間JSONをSVGと一緒に残す');
         keepJson.value = false;
-        var strict = dialog.add('checkbox', undefined, 'Contentsにアニメーションがある場合はエラーにする');
+        var strict = dialog.add('checkbox', undefined, 'Contents・アンカーポイント・位置にアニメーションがある場合はエラーにする');
         strict.value = false;
         var buttons = dialog.add('group');
         buttons.add('button', undefined, 'SVGを書き出す', {name: 'ok'});
@@ -85,7 +85,7 @@
                 throw new Error(conversionError.toString() + '\n作業フォルダー: ' + work.fsName +
                     '\n保存済みSVG: ' + written + ' 件\n' + saved.join('\n'));
             }
-            cleanupWarnings = cleanupWarnings.concat(AEShapeRunner.cleanup(work, [input, output, log]));
+            cleanupWarnings = cleanupWarnings.concat(AEShapeRunner.cleanup(work, [input, output, log, new File(log.fsName + '.status')]));
         }
         alert('SVGを保存しました: ' + written + ' 件\n' + saved.join('\n') +
             (cleanupWarnings.length ? '\n削除できなかった中間ファイル:\n' + cleanupWarnings.join('\n') : ''));

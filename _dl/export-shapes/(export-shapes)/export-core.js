@@ -125,12 +125,26 @@ var AEShapeExport = (function () {
         var warnings = [], contents = layer.property('ADBE Root Vectors Group');
         if (!contents) { throw new Error('シェイプレイヤーではありません: ' + layer.name); }
         var tree = read(contents, time, strict, warnings, layer.name, false);
+        var transform = layer.property('ADBE Transform Group');
+        var anchor = [0, 0], position = [comp.width / 2, comp.height / 2];
+        function transformValue(matchName, fallback) {
+            var p = transform ? transform.property(matchName) : null;
+            if (!p) { return fallback; }
+            // Separated Position dimensions cannot reliably be read via the leader.
+            if (p.isSeparationLeader && p.dimensionsSeparated) {
+                return [read(p.getSeparationFollower(0), time, strict, warnings, layer.name, false).value,
+                    read(p.getSeparationFollower(1), time, strict, warnings, layer.name, false).value];
+            }
+            return read(p, time, strict, warnings, layer.name, false).value;
+        }
+        anchor = transformValue('ADBE Anchor Point', anchor);
+        position = transformValue('ADBE Position', position);
         return {format: 'ae-shape-contents', schemaVersion: 1,
             scope: 'contentsOnly', complete: warnings.length === 0,
             source: {application: 'After Effects', version: app.version,
                 composition: {name: comp.name, width: comp.width, height: comp.height,
                     pixelAspect: comp.pixelAspect, frameRate: comp.frameRate, displayStartTime: comp.displayStartTime},
-                layer: {name: layer.name, index: layer.index},
+                layer: {name: layer.name, index: layer.index, anchorPoint: anchor, position: position},
                 evaluation: {timeSeconds: time, animationPolicy: strict ? 'reject' : 'currentTime', postExpression: true}},
             contents: tree, warnings: warnings};
     }

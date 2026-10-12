@@ -44,6 +44,20 @@ async function main() {
   let svg=run(document([rect(),fill()]),['--margin','0']);
   assert.ok(svg.includes('viewBox="-50 -50 100 100"'));
   let pixel=await raster(svg);red(pixel(0,0));clear(pixel(60,0));
+  const compDoc=document([rect(0,0,40,40),fill()]);
+  compDoc.source.composition={width:320,height:180};
+  compDoc.source.layer.anchorPoint=[10,20,0];
+  compDoc.source.layer.position=[100,80,0];
+  const compSvg=run(compDoc,['--margin','25']);
+  assert.match(compSvg,/viewBox="0 0 320 180" width="320" height="180"/);
+  const rendered=await sharp(Buffer.from(compSvg)).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  assert.equal(rendered.info.width,320);assert.equal(rendered.info.height,180);
+  const compPixel=(x,y)=>[...rendered.data.subarray((y*320+x)*4,(y*320+x)*4+4)];
+  red(compPixel(90,60));clear(compPixel(115,60));clear(compPixel(0,0));
+  const legacyComp=document([]);legacyComp.source.composition={width:320,height:180};
+  assert.match(run(legacyComp),/translate\(160\.000000 90\.000000\)/);
+  const invalidComp=document([]);invalidComp.source.composition={width:0,height:180};
+  run(invalidComp,[],false);
   // Native roundedness stays Bezier, accepts negative values, and reverses winding
   // without changing the filled silhouette. Cover outer and inner knobs independently.
   for (const [type, outer, inner] of [[2,76,0],[1,0,39],[1,45,0],[1,-35,39],[1,100,100]]) {

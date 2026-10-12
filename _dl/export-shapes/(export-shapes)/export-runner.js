@@ -38,15 +38,23 @@ var AEShapeRunner = (function () {
         // cmd.exe never interprets user-controlled %, &, apostrophes or parentheses.
         var script = '$ErrorActionPreference="Continue"; & ' + literal(exe.fsName) + ' ' + literal(input.fsName) +
             ' ' + literal(output.fsName) + ' 2>&1 | Out-File -LiteralPath ' + literal(log.fsName) +
-            ' -Encoding utf8; $code=$LASTEXITCODE; Write-Output ("AE_SHAPE_EXIT="+$code)';
+            ' -Encoding utf8; $code=$LASTEXITCODE; if ($null -eq $code) { $code=-1 }; ' +
+            '[System.IO.File]::WriteAllText(' + literal(log.fsName + '.status') +
+            ', [string]$code, [System.Text.Encoding]::ASCII)';
         return 'cmd.exe /d /s /c ""%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"' +
             ' -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand ' + encodedCommand(script) + '"';
     }
     function convert(exe, input, output, log) {
-        var response = system.callSystem(command(exe, input, output, log));
-        if (!/AE_SHAPE_EXIT=0(?:\r?\n|$)/.test(response) || !new File(output.fsName).exists ||
+        var status = new File(log.fsName + '.status');
+        if (status.exists && !status.remove()) { throw new Error('前回の終了コードを削除できません: ' + status.fsName); }
+        // AE may return empty or differently encoded stdout even when the exe succeeds.
+        // Read an ASCII status file instead; missing/stale statuses are never success.
+        system.callSystem(command(exe, input, output, log));
+        var code = read(new File(status.fsName)).replace(/^[\s\uFEFF]+|[\s\uFEFF]+$/g, '');
+        if (code !== '0' || !new File(output.fsName).exists ||
             new File(output.fsName).length <= 0) {
-            throw new Error('SVG変換に失敗しました。\n' + read(log) + '\n中間JSON: ' + input.fsName + '\nログ: ' + log.fsName);
+            throw new Error('SVG変換に失敗しました。\n終了コード: ' + (code || '取得できません') +
+                '\n' + read(log) + '\n中間JSON: ' + input.fsName + '\nログ: ' + log.fsName);
         }
     }
     function cleanup(folder, files) {

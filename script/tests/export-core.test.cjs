@@ -18,9 +18,10 @@ function group(matchName, children) {
         numProperties: children.length, property(i) { return children[i - 1]; }};
 }
 const comp = {name: '日本語', width: 1920, height: 1080, pixelAspect: 1, frameRate: 24, displayStartTime: 0};
-function layer(children) {
+function layer(children, transform = null) {
     const root = group('ADBE Root Vectors Group', children);
     return {name: 'Shape', index: 1, property(name) {
+        if (name === 'ADBE Transform Group') return transform;
         assert.equal(name, 'ADBE Root Vectors Group'); return root;
     }};
 }
@@ -163,4 +164,16 @@ for (const radius of [0, 12.5, 1000]) {
     ])]), 0, false);
     assert.equal(doc.contents.children[0].children[0].value, radius);
 }
+const animatedAnchor = leaf('ADBE Anchor Point', [12, 34, 0], {numKeys:2});
+const animatedPosition = leaf('ADBE Position', [300, 200, 0], {expressionEnabled:true});
+const layerTransform = {property(name) {return name==='ADBE Anchor Point'?animatedAnchor:animatedPosition;}};
+doc = AEShapeExport.documentFor(comp,layer([],layerTransform),1.25,false);
+assert.deepEqual(doc.source.layer.anchorPoint,[12,34,0]);
+assert.deepEqual(doc.source.layer.position,[300,200,0]);
+assert.throws(()=>AEShapeExport.documentFor(comp,layer([],layerTransform),1.25,true),/アニメーション/);
+const separatedPosition = {...animatedPosition,isSeparationLeader:true,dimensionsSeparated:true,
+    getSeparationFollower(i) {return leaf('ADBE Position_'+i,i===0?300:200);},
+    valueAtTime(){throw Error('Do not read separated leader');}};
+doc = AEShapeExport.documentFor(comp,layer([],{property(name){return name==='ADBE Position'?separatedPosition:null;}}),0,false);
+assert.deepEqual(doc.source.layer.position,[300,200]);
 console.log('Export core mock tests passed');
