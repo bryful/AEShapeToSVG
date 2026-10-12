@@ -79,6 +79,27 @@ assert.throws(() => AEShapeExport.documentFor(comp, layer([group('ADBE Vector Gr
     leaf('ADBE Vector Grad Colors', null, {numKeys: 1})
 ])]), 0, true), /Animation/);
 const shape = {vertices: [[0, 0], [10, 10]], inTangents: [[0, 0], [-1, -1]], outTangents: [[1, 1], [0, 0]], closed: false};
+for (const mode of [1, 2]) {
+    const trim = group('ADBE Vector Filter - Trim', [
+        leaf('ADBE Vector Trim Start', 15),
+        leaf('ADBE Vector Trim End', 80, {
+            numKeys: 2, expressionEnabled: true,
+            valueAtTime(t, pre) { assert.equal(t, 1.25); assert.equal(pre, false); return 80; }
+        }),
+        leaf('ADBE Vector Trim Offset', -90),
+        leaf('ADBE Vector Trim Type', mode)
+    ]);
+    const nested = layer([group('ADBE Vector Group', [group('ADBE Vectors Group', [
+        group('ADBE Vector Shape - Rect', []), trim, group('ADBE Vector Graphic - Stroke', [])
+    ])])]);
+    doc = AEShapeExport.documentFor(comp, nested, 1.25, false);
+    const children = doc.contents.children[0].children[0].children;
+    assert.deepEqual(children.map(n => n.kind), ['rectangle', 'trimPaths', 'stroke']);
+    assert.deepEqual(children[1].children.map(n => n.value), [15, 80, -90, mode]);
+    assert.equal(doc.complete, true);
+    assert.deepEqual(JSON.parse(AEShapeExport.stringify(doc)), doc);
+    assert.throws(() => AEShapeExport.documentFor(comp, nested, 1.25, true), /Animation/);
+}
 doc = AEShapeExport.documentFor(comp, layer([group('ADBE Vector Shape - Group', [leaf('ADBE Vector Shape', shape, {propertyValueType: 1})])]), 0, false);
 assert.deepEqual(doc.contents.children[0].children[0].value, shape);
 assert.throws(() => AEShapeExport.documentFor(comp, layer([group('ADBE Vector Graphic - Fill', [leaf('color', 1, {

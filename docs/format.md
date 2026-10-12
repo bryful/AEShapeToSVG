@@ -32,3 +32,9 @@ Shapeは `vertices`, `inTangents`, `outTangents`, `closed` を持ち、接線は
 結合、追加、型抜き、交差、交差を除外などのモードはAEの数値をそのまま保持し、
 実際のパス演算は変換アプリ側で実装します。
 SVG/PDFの同時出力やInkscape呼び出しは未実装です。将来はこのJSONを共通入力として使用します。
+
+パスのトリミングは `kind: "trimPaths"`、`matchName: "ADBE Vector Filter - Trim"` として保存します。
+子は `ADBE Vector Trim Start`（開始%）、`ADBE Vector Trim End`（終了%）、
+`ADBE Vector Trim Offset`（度）、`ADBE Vector Trim Type`（複数シェイプの処理モード）です。
+カレント時間・Expression適用後の値とContents内の順序を保持します。
+Bezier曲線の長さ計算、パスの分割、複数シェイプへの適用などの実際のトリミング処理は変換アプリ側の責務です。
