@@ -36,7 +36,11 @@ struct Reader {
             if (c.tag == "LIST") {
                 if (n < 4) throw std::runtime_error("Invalid AEP LIST");
                 c.kind = data.substr(p+8,4);
-                c.children = Chunks(p+12, stop, depth+1);
+                // AE also uses LIST for opaque payloads, e.g. btdk font/text data.
+                // Only these containers are needed to reach gradient properties.
+                if (c.kind == "Fold" || c.kind == "Item" || c.kind == "Layr" ||
+                    c.kind == "tdgp" || c.kind == "GCst" || c.kind == "GCky" || c.kind == "tdbs")
+                    c.children = Chunks(p+12, stop, depth+1);
             } else if (c.tag == "tdsn") {
                 c.children = Chunks(p+8, stop, depth+1);
             }

@@ -89,6 +89,27 @@ async function main(){
  fs.writeFileSync(fixture,chunk('RIFX',Buffer.concat([Buffer.from('Egg!'),duplicate])));
  doc=document(report);doc.source.projectFile=fixture;result=convert(doc);
  assert(result.log.includes('Ambiguous gradient path'));assert(!result.svg.includes('<linearGradient'));
+ // LIST is not universally a container: AE text/font data has opaque btdk payloads.
+ const textData=list('btds',list('btdk',Buffer.from(' /98 << /0 13 >> /0 << /1 << /CoolTypeFont')));
+ const opaque=list('Item',utf('コンポ 1'),list('Layr',utf('シェイプレイヤー 1'),textData,
+  named(report.gradients[0].navigation[2],named(report.gradients[0].navigation[3],staticGradient))));
+ fs.writeFileSync(fixture,chunk('RIFX',Buffer.concat([Buffer.from('Egg!'),opaque])));
+ invoke(['--inspect-gradients',fixture,output,'--time','1.25']);
+ assert.equal(JSON.parse(fs.readFileSync(output,'utf8')).gradients.length,1);
+ doc=document(report);doc.source.projectFile=fixture;result=convert(doc);
+ assert(result.svg.includes('<linearGradient '));assert(!result.log.includes('chunk exceeds parent'));
+ const sample003=path.resolve('sample/003/DJ_TurnTable_a.aep');
+ const sample003Json=path.resolve('sample/003/01_mg2_02.json');
+ if(fs.existsSync(sample003)&&fs.existsSync(sample003Json)){
+  doc=JSON.parse(fs.readFileSync(sample003Json,'utf8'));
+  // The supplied JSON refers to the exporting PC's account; change only this test copy.
+  doc.source.projectFile=sample003;
+  result=convert(doc);assert.equal(result.log,'');assert(result.svg.includes('<linearGradient '));
+  invoke(['--inspect-gradients',sample003,output,'--time',String(doc.source.evaluation.timeSeconds)]);
+  const parsed=JSON.parse(fs.readFileSync(output,'utf8'));
+  const gradient=parsed.gradients.find(g=>g.navigation[0]==='01_mg2'&&g.navigation[1]==='02');
+  assert(gradient);assert.equal(gradient.colors.length,5);assert.equal(gradient.status,'extracted');
+ }
  console.log('Gradient integration passed: 002.aep colors/alpha/midpoint, time, keyed fill/stroke fallback, errors, radial paint'+(process.argv[3]?', raster pixels':''));
 }
 main().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>{
